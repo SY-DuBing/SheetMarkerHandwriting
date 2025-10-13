@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fabric.js 自由绘图 - 带撤销功能</title>
+    <title>Sheet Marker手書き機能検証</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
     <style>
         body {
@@ -149,7 +149,6 @@
             border-radius: 8px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             background-color: white;
-            touch-action: none; /* 防止浏览器默认的双指缩放/滚动，重要 */
         }
         .status-message {
             margin-top: 15px;
@@ -178,32 +177,31 @@
 </head>
 <body>
     <div class="container">
-        <h1>🎨 Fabric.js 自由绘图工具</h1>
-        <p class="subtitle">上传底图，自由绘制，保存和加载您的作品，支持撤销功能</p>
+        
 
         <div class="controls">
             <div class="control-group">
-                <label>📁 上传底图：</label>
+                <label>📁 アップロード：</label>
                 <input type="file" id="imageUpload" accept="image/*">
             </div>
 
             <div class="control-group">
-                <label>🎨 画笔颜色：</label>
+                <label>🎨 色設定：</label>
                 <input type="color" id="brushColor" value="#000000">
             </div>
 
             <div class="control-group">
-                <label>📏 画笔粗细：</label>
+                <label>📏 筆の太さ：</label>
                 <input type="range" id="brushWidth" min="1" max="50" value="5">
                 <span class="value-display" id="widthValue">5</span> px
             </div>
 
             <div class="control-group">
-                <button id="drawingMode">✏️ 启用绘图</button>
+                <button id="drawingMode">✏️ 手書き開始</button>
                 <button id="undoBtn" class="undo" disabled>↶ Undo</button>
-                <button id="clearCanvas" class="warning">🗑️ 清空绘图</button>
-                <button id="saveJSON" class="success">💾 保存为 JSON</button>
-                <button id="loadJSON" class="info">📂 加载 JSON</button>
+                <button id="clearCanvas" class="warning">🗑️ クリアー</button>
+                <button id="saveJSON" class="success">💾 保存JSON</button>
+                <button id="loadJSON" class="info">📂 ロードJSON</button>
             </div>
         </div>
 
@@ -279,7 +277,7 @@
 
                         // 将图片设置为背景
                         canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
-                        showStatus('✅ 底图已成功上传！', 'success');
+                        showStatus('✅ 成功！', 'success');
                     });
                 };
                 reader.readAsDataURL(file);
@@ -291,20 +289,20 @@
         drawingModeBtn.addEventListener('click', function() {
             canvas.isDrawingMode = !canvas.isDrawingMode;
             if (canvas.isDrawingMode) {
-                drawingModeBtn.textContent = '🚫 退出绘图';
+                drawingModeBtn.textContent = '🚫 手書き終了';
                 drawingModeBtn.style.background = 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)';
-                showStatus('✏️ 绘图模式已启用', 'info');
+                showStatus('✏️ 手書きモード有効', 'info');
             } else {
-                drawingModeBtn.textContent = '✏️ 启用绘图';
+                drawingModeBtn.textContent = '✏️ 手書き開始';
                 drawingModeBtn.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-                showStatus('👆 绘图模式已关闭', 'info');
+                showStatus('👆 手書きモード無効', 'info');
             }
         });
 
         // 改变画笔颜色
         document.getElementById('brushColor').addEventListener('change', function() {
             canvas.freeDrawingBrush.color = this.value;
-            showStatus('🎨 画笔颜色已更改', 'info');
+            showStatus('🎨 色変更しました。', 'info');
         });
 
         // 改变画笔粗细
@@ -322,7 +320,7 @@
                 canvas.remove(lastPath);
                 canvas.renderAll();
                 updateUndoButton();
-                showStatus('↶ 已撤销最近一次绘制', 'info');
+                showStatus('↶ Undo成功', 'info');
             }
         });
 
@@ -332,7 +330,7 @@
             const pathObjects = objects.filter(obj => obj.type === 'path');
 
             if (pathObjects.length === 0) {
-                showStatus('⚠️ 画布上没有绘图内容', 'info');
+                showStatus('⚠️ 内容がありません。', 'info');
                 return;
             }
 
@@ -345,7 +343,7 @@
             updateUndoButton();
 
             canvas.renderAll();
-            showStatus('🗑️ 绘图内容已清空', 'success');
+            showStatus('🗑️ クリアーしました', 'success');
         });
 
         // 保存为JSON文件
@@ -362,7 +360,7 @@
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            showStatus('💾 绘图已保存为 JSON 文件！', 'success');
+            showStatus('💾 保存成功', 'success');
         });
 
         // 加载JSON文件
@@ -393,112 +391,22 @@
                             updateUndoButton();
 
                             canvas.renderAll();
-                            showStatus('📂 JSON 文件已成功加载！', 'success');
+                            showStatus('📂 ロード成功', 'success');
                         });
                     } catch (error) {
-                        showStatus('❌ JSON 文件格式错误，无法加载', 'error');
-                        console.error('JSON 解析错误:', error);
+                        showStatus('❌ ロード失敗', 'error');
+                        console.error('JSON エラー:', error);
                     }
                 };
                 reader.readAsText(file);
-
-                // -----------------------
-                // 添加的双指平移逻辑（touch pan with two fingers）
-                // -----------------------
-                (function enableTwoFingerPan() {
-                    const canvasEl = canvas.getElement(); // <canvas> DOM 元素
-                    let isTwoFingerPanning = false;
-                    let lastTouches = null;
-                    let lastPan = { x: 0, y: 0 };
-                    let prevIsDrawingMode = canvas.isDrawingMode;
-
-                    // Helper: 计算两指中心点
-                    function getMidpoint(t1, t2) {
-                        return {
-                            x: (t1.clientX + t2.clientX) / 2,
-                            y: (t1.clientY + t2.clientY) / 2
-                        };
-                    }
-
-                    // touchstart
-                    canvasEl.addEventListener('touchstart', function (e) {
-                        if ((e.touches && e.touches.length === 2)) {
-                            // 进入双指平移模式
-                            isTwoFingerPanning = true;
-                            lastTouches = [e.touches[0], e.touches[1]];
-                            lastPan = getMidpoint(lastTouches[0], lastTouches[1]);
-
-                            // 暂时禁用绘图模式以避免产生 path
-                            prevIsDrawingMode = canvas.isDrawingMode;
-                            canvas.isDrawingMode = false;
-
-                            // 阻止默认行为（比如双指缩放页面）
-                            e.preventDefault();
-                        }
-                    }, { passive: false });
-
-                    // touchmove
-                    canvasEl.addEventListener('touchmove', function (e) {
-                        if (!isTwoFingerPanning) return;
-                        if (!(e.touches && e.touches.length === 2)) return;
-
-                        const t0 = e.touches[0];
-                        const t1 = e.touches[1];
-                        const mid = getMidpoint(t0, t1);
-
-                        const dx = mid.x - lastPan.x;
-                        const dy = mid.y - lastPan.y;
-
-                        // 更新视口平移：viewportTransform 是一个 6 元素数组 [a, b, c, d, e, f]
-                        // e 和 f 表示平移（translateX, translateY）
-                        const vpt = canvas.viewportTransform;
-                        vpt[4] += dx;
-                        vpt[5] += dy;
-                        canvas.requestRenderAll();
-
-                        lastPan = mid;
-
-                        // 阻止默认页面滚动/缩放
-                        e.preventDefault();
-                    }, { passive: false });
-
-                    // touchend / touchcancel
-                    function endPan(e) {
-                        if (!isTwoFingerPanning) return;
-                        // 当手指数量变为少于2时结束平移
-                        if (e.touches && e.touches.length >= 2) return;
-                        isTwoFingerPanning = false;
-                        lastTouches = null;
-
-                        // 恢复之前的绘图模式状态
-                        canvas.isDrawingMode = prevIsDrawingMode;
-
-                        // Prevent possible click events following touchend
-                        e.preventDefault && e.preventDefault();
-                    }
-
-                    canvasEl.addEventListener('touchend', endPan, { passive: false });
-                    canvasEl.addEventListener('touchcancel', endPan, { passive: false });
-
-                    // 可选：当用户用鼠标滚轮或其他改变 viewport 时保持行为一致
-                    // （此处不做额外处理）
-                })();
-    // -----------------------
-
-
-
 
                 // 重置文件输入，允许重复加载同一个文件
                 e.target.value = '';
             }
         });
 
-
-
-
-
         // 初始化提示
-        showStatus('👋 欢迎使用绘图工具！请先上传底图，然后启用绘图模式开始创作', 'info');
+        showStatus('👋 Wellcome　To　SheetMarker　Demo', 'info');
 
         // 初始化撤销按钮状态
         updateUndoButton();
