@@ -149,6 +149,7 @@
             border-radius: 8px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             background-color: white;
+            touch-action: none; /* 防止浏览器默认的双指缩放/滚动，重要 */
         }
         .status-message {
             margin-top: 15px;
@@ -401,10 +402,100 @@
                 };
                 reader.readAsText(file);
 
+                // -----------------------
+                // 添加的双指平移逻辑（touch pan with two fingers）
+                // -----------------------
+                (function enableTwoFingerPan() {
+                    const canvasEl = canvas.getElement(); // <canvas> DOM 元素
+                    let isTwoFingerPanning = false;
+                    let lastTouches = null;
+                    let lastPan = { x: 0, y: 0 };
+                    let prevIsDrawingMode = canvas.isDrawingMode;
+
+                    // Helper: 计算两指中心点
+                    function getMidpoint(t1, t2) {
+                        return {
+                            x: (t1.clientX + t2.clientX) / 2,
+                            y: (t1.clientY + t2.clientY) / 2
+                        };
+                    }
+
+                    // touchstart
+                    canvasEl.addEventListener('touchstart', function (e) {
+                        if ((e.touches && e.touches.length === 2)) {
+                            // 进入双指平移模式
+                            isTwoFingerPanning = true;
+                            lastTouches = [e.touches[0], e.touches[1]];
+                            lastPan = getMidpoint(lastTouches[0], lastTouches[1]);
+
+                            // 暂时禁用绘图模式以避免产生 path
+                            prevIsDrawingMode = canvas.isDrawingMode;
+                            canvas.isDrawingMode = false;
+
+                            // 阻止默认行为（比如双指缩放页面）
+                            e.preventDefault();
+                        }
+                    }, { passive: false });
+
+                    // touchmove
+                    canvasEl.addEventListener('touchmove', function (e) {
+                        if (!isTwoFingerPanning) return;
+                        if (!(e.touches && e.touches.length === 2)) return;
+
+                        const t0 = e.touches[0];
+                        const t1 = e.touches[1];
+                        const mid = getMidpoint(t0, t1);
+
+                        const dx = mid.x - lastPan.x;
+                        const dy = mid.y - lastPan.y;
+
+                        // 更新视口平移：viewportTransform 是一个 6 元素数组 [a, b, c, d, e, f]
+                        // e 和 f 表示平移（translateX, translateY）
+                        const vpt = canvas.viewportTransform;
+                        vpt[4] += dx;
+                        vpt[5] += dy;
+                        canvas.requestRenderAll();
+
+                        lastPan = mid;
+
+                        // 阻止默认页面滚动/缩放
+                        e.preventDefault();
+                    }, { passive: false });
+
+                    // touchend / touchcancel
+                    function endPan(e) {
+                        if (!isTwoFingerPanning) return;
+                        // 当手指数量变为少于2时结束平移
+                        if (e.touches && e.touches.length >= 2) return;
+                        isTwoFingerPanning = false;
+                        lastTouches = null;
+
+                        // 恢复之前的绘图模式状态
+                        canvas.isDrawingMode = prevIsDrawingMode;
+
+                        // Prevent possible click events following touchend
+                        e.preventDefault && e.preventDefault();
+                    }
+
+                    canvasEl.addEventListener('touchend', endPan, { passive: false });
+                    canvasEl.addEventListener('touchcancel', endPan, { passive: false });
+
+                    // 可选：当用户用鼠标滚轮或其他改变 viewport 时保持行为一致
+                    // （此处不做额外处理）
+                })();
+    // -----------------------
+
+
+
+
                 // 重置文件输入，允许重复加载同一个文件
                 e.target.value = '';
             }
         });
+
+
+
+
 
         // 初始化提示
         showStatus('👋 欢迎使用绘图工具！请先上传底图，然后启用绘图模式开始创作', 'info');
