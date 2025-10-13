@@ -1,0 +1,416 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fabric.js 自由绘图 - 带撤销功能</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 25px;
+            font-size: 14px;
+        }
+        .controls {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: linear-gradient(to right, #f8f9fa, #e9ecef);
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        .control-group {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        label {
+            display: inline-block;
+            min-width: 120px;
+            font-weight: 600;
+            color: #444;
+            margin-right: 10px;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.6);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+        button.success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            box-shadow: 0 2px 8px rgba(56, 239, 125, 0.4);
+        }
+        button.success:hover:not(:disabled) {
+            box-shadow: 0 4px 12px rgba(56, 239, 125, 0.6);
+        }
+        button.warning {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            box-shadow: 0 2px 8px rgba(245, 87, 108, 0.4);
+        }
+        button.warning:hover:not(:disabled) {
+            box-shadow: 0 4px 12px rgba(245, 87, 108, 0.6);
+        }
+        button.info {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            box-shadow: 0 2px 8px rgba(79, 172, 254, 0.4);
+        }
+        button.info:hover:not(:disabled) {
+            box-shadow: 0 4px 12px rgba(79, 172, 254, 0.6);
+        }
+        button.undo {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            box-shadow: 0 2px 8px rgba(250, 112, 154, 0.4);
+        }
+        button.undo:hover:not(:disabled) {
+            box-shadow: 0 4px 12px rgba(250, 112, 154, 0.6);
+        }
+        input[type="file"] {
+            padding: 8px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            background-color: white;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+        input[type="file"]:hover {
+            border-color: #667eea;
+        }
+        input[type="color"] {
+            width: 60px;
+            height: 40px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        input[type="color"]:hover {
+            transform: scale(1.1);
+        }
+        input[type="range"] {
+            width: 220px;
+            height: 6px;
+            border-radius: 3px;
+            outline: none;
+            margin: 0 10px;
+        }
+        .value-display {
+            display: inline-block;
+            min-width: 50px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .canvas-wrapper {
+            text-align: center;
+            margin-top: 20px;
+        }
+        #canvas {
+            border: 3px solid #667eea;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            background-color: white;
+        }
+        .status-message {
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+            font-weight: 500;
+            display: none;
+        }
+        .status-message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status-message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status-message.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Fabric.js 自由绘图工具</h1>
+        <p class="subtitle">上传底图，自由绘制，保存和加载您的作品，支持撤销功能</p>
+
+        <div class="controls">
+            <div class="control-group">
+                <label>📁 上传底图：</label>
+                <input type="file" id="imageUpload" accept="image/*">
+            </div>
+
+            <div class="control-group">
+                <label>🎨 画笔颜色：</label>
+                <input type="color" id="brushColor" value="#000000">
+            </div>
+
+            <div class="control-group">
+                <label>📏 画笔粗细：</label>
+                <input type="range" id="brushWidth" min="1" max="50" value="5">
+                <span class="value-display" id="widthValue">5</span> px
+            </div>
+
+            <div class="control-group">
+                <button id="drawingMode">✏️ 启用绘图</button>
+                <button id="undoBtn" class="undo" disabled>↶ Undo</button>
+                <button id="clearCanvas" class="warning">🗑️ 清空绘图</button>
+                <button id="saveJSON" class="success">💾 保存为 JSON</button>
+                <button id="loadJSON" class="info">📂 加载 JSON</button>
+            </div>
+        </div>
+
+        <div class="canvas-wrapper">
+            <canvas id="canvas" width="1200" height="1080"></canvas>
+        </div>
+
+        <div id="statusMessage" class="status-message"></div>
+
+        <!-- 隐藏的文件输入用于加载JSON -->
+        <input type="file" id="jsonFileInput" accept="application/json,.json" style="display: none;">
+    </div>
+
+    <script>
+        // 初始化 Fabric.js 画布
+        const canvas = new fabric.Canvas('canvas', {
+            isDrawingMode: false,
+            backgroundColor: '#ffffff'
+        });
+
+        // 设置画笔属性
+        canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+        canvas.freeDrawingBrush.color = '#000000';
+        canvas.freeDrawingBrush.width = 5;
+
+        // 用于追踪绘制的路径，实现撤销功能
+        let drawingHistory = [];
+
+        // 状态消息显示函数
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('statusMessage');
+            statusDiv.textContent = message;
+            statusDiv.className = 'status-message ' + type;
+            statusDiv.style.display = 'block';
+
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 3000);
+        }
+
+        // 更新撤销按钮状态
+        function updateUndoButton() {
+            const undoBtn = document.getElementById('undoBtn');
+            undoBtn.disabled = drawingHistory.length === 0;
+        }
+
+        // 监听路径创建事件，将新路径添加到历史记录
+        canvas.on('path:created', function(e) {
+            drawingHistory.push(e.path);
+            updateUndoButton();
+        });
+
+        // 上传图片作为背景
+        document.getElementById('imageUpload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    fabric.Image.fromURL(event.target.result, function(img) {
+                        // 计算缩放比例以适应画布
+                        const scale = Math.min(
+                            canvas.width / img.width,
+                            canvas.height / img.height
+                        );
+
+                        img.scale(scale);
+                        img.set({
+                            left: 0,
+                            top: 0,
+                            selectable: false,
+                            evented: false
+                        });
+
+                        // 将图片设置为背景
+                        canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
+                        showStatus('✅ 底图已成功上传！', 'success');
+                    });
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // 切换绘图模式
+        const drawingModeBtn = document.getElementById('drawingMode');
+        drawingModeBtn.addEventListener('click', function() {
+            canvas.isDrawingMode = !canvas.isDrawingMode;
+            if (canvas.isDrawingMode) {
+                drawingModeBtn.textContent = '🚫 退出绘图';
+                drawingModeBtn.style.background = 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)';
+                showStatus('✏️ 绘图模式已启用', 'info');
+            } else {
+                drawingModeBtn.textContent = '✏️ 启用绘图';
+                drawingModeBtn.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                showStatus('👆 绘图模式已关闭', 'info');
+            }
+        });
+
+        // 改变画笔颜色
+        document.getElementById('brushColor').addEventListener('change', function() {
+            canvas.freeDrawingBrush.color = this.value;
+            showStatus('🎨 画笔颜色已更改', 'info');
+        });
+
+        // 改变画笔粗细
+        const brushWidth = document.getElementById('brushWidth');
+        const widthValue = document.getElementById('widthValue');
+        brushWidth.addEventListener('input', function() {
+            canvas.freeDrawingBrush.width = parseInt(this.value, 10);
+            widthValue.textContent = this.value;
+        });
+
+        // 撤销功能 - 删除最近一次绘制的对象
+        document.getElementById('undoBtn').addEventListener('click', function() {
+            if (drawingHistory.length > 0) {
+                const lastPath = drawingHistory.pop();
+                canvas.remove(lastPath);
+                canvas.renderAll();
+                updateUndoButton();
+                showStatus('↶ 已撤销最近一次绘制', 'info');
+            }
+        });
+
+        // 清空画布中的绘图（保留背景图）
+        document.getElementById('clearCanvas').addEventListener('click', function() {
+            const objects = canvas.getObjects();
+            const pathObjects = objects.filter(obj => obj.type === 'path');
+
+            if (pathObjects.length === 0) {
+                showStatus('⚠️ 画布上没有绘图内容', 'info');
+                return;
+            }
+
+            pathObjects.forEach(obj => {
+                canvas.remove(obj);
+            });
+
+            // 清空历史记录
+            drawingHistory = [];
+            updateUndoButton();
+
+            canvas.renderAll();
+            showStatus('🗑️ 绘图内容已清空', 'success');
+        });
+
+        // 保存为JSON文件
+        document.getElementById('saveJSON').addEventListener('click', function() {
+            const json = canvas.toJSON();
+            const jsonString = JSON.stringify(json, null, 2);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+            a.href = url;
+            a.download = `canvas_drawing_${timestamp}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showStatus('💾 绘图已保存为 JSON 文件！', 'success');
+        });
+
+        // 加载JSON文件
+        document.getElementById('loadJSON').addEventListener('click', function() {
+            document.getElementById('jsonFileInput').click();
+        });
+
+        document.getElementById('jsonFileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    try {
+                        const json = JSON.parse(event.target.result);
+
+                        // 清空当前画布的所有对象
+                        canvas.clear();
+
+                        // 清空历史记录
+                        drawingHistory = [];
+                        updateUndoButton();
+
+                        // 从JSON恢复画布
+                        canvas.loadFromJSON(json, function() {
+                            // 重新构建历史记录（只包含路径对象）
+                            const objects = canvas.getObjects();
+                            drawingHistory = objects.filter(obj => obj.type === 'path');
+                            updateUndoButton();
+
+                            canvas.renderAll();
+                            showStatus('📂 JSON 文件已成功加载！', 'success');
+                        });
+                    } catch (error) {
+                        showStatus('❌ JSON 文件格式错误，无法加载', 'error');
+                        console.error('JSON 解析错误:', error);
+                    }
+                };
+                reader.readAsText(file);
+
+                // 重置文件输入，允许重复加载同一个文件
+                e.target.value = '';
+            }
+        });
+
+        // 初始化提示
+        showStatus('👋 欢迎使用绘图工具！请先上传底图，然后启用绘图模式开始创作', 'info');
+
+        // 初始化撤销按钮状态
+        updateUndoButton();
+    </script>
+</body>
+</html>
