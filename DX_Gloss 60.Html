@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -13,10 +13,9 @@
             background: linear-gradient(135deg, #f8f9fc 0%, #eef2f7 100%);
             min-height: 100vh;
         }
-
+        
         .chart-container {
-            width: 1616px;
-            height: 400px;
+            width: 950px;
             margin: 0 auto;
             background: rgba(255, 255, 255, 0.95);
             border-radius: 8px;
@@ -25,66 +24,119 @@
             position: relative;
             backdrop-filter: blur(4px);
             border: 1px solid rgba(0, 0, 0, 0.03);
-            overflow-x: auto;
+            overflow: hidden;
         }
 
+        .control-panel {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        #SelectAB {
+            padding: 6px 12px;
+            font-size: 14px;
+            border: 1px solid #d1d9e6;
+            border-radius: 4px;
+            background: #ffffff;
+            color: #2c3e50;
+            cursor: pointer;
+            outline: none;
+        }
+
+        #SelectAB:hover {
+            border-color: #3498db;
+        }
+
+        .average-display {
+            margin-left: 15px;
+            font-size: 14px;
+            color: #2c3e50;
+            font-weight: 500;
+            padding: 6px 12px;
+            background: rgba(52, 152, 219, 0.1);
+            border-radius: 4px;
+            border: 1px solid rgba(52, 152, 219, 0.2);
+        }
+        
         .chart-wrapper {
             position: relative;
             width: 100%;
-            height: 100%;
+            height: 380px;
             display: flex;
             align-items: stretch;
         }
 
-        .chart-area {
+        .canvas-wrapper {
             flex: 1;
             position: relative;
+            padding-right: 135px;
         }
 
+        .chart-canvas-area {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 135px;
+            bottom: 120px;
+        }
+        
+        .chart-area {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+        
         .legend-container {
-            position: static;
-            width: 140px;
-            background: rgba(255, 255, 255, 0.85);
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 130px;
+            background: rgba(255, 255, 255, 0.9);
             border-radius: 6px;
             padding: 10px;
             font-size: 11px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
             backdrop-filter: blur(4px);
             border: 1px solid rgba(0, 0, 0, 0.03);
-            max-height: 250px;
+            max-height: 280px;
             overflow-y: auto;
-            flex-shrink: 0;
-            margin-left: 10px;
+            z-index: 5;
         }
-
+        
         .x-axis-labels {
             position: absolute;
-            bottom: 5px;
+            bottom: 0;
             left: 0;
-            right: 0;
+            right: 135px;
             height: 120px;
             font-size: 12px;
             color: #5a6c7d;
             font-weight: 500;
+            z-index: 1;
         }
 
         .group-background {
             position: absolute;
             top: 0;
-            bottom: 120px; /* 为X轴标签留出空间 */
+            left: 0;
+            right: 135px;
+            bottom: 120px;
             pointer-events: none;
             z-index: 0;
         }
 
         .group-bg-odd {
-            background-color: rgba(52, 152, 219, 0.08); /* 淡蓝色 */
+            background-color: rgba(52, 152, 219, 0.08);
         }
 
         .group-bg-even {
-            background-color: transparent; /* 透明 */
+            background-color: transparent;
         }
-
-
 
         .label-column {
             position: absolute;
@@ -94,30 +146,30 @@
             align-items: center;
         }
 
-            .label-column::after {
-                content: '';
-                position: absolute;
-                right: -0.5px;
-                top: -280px; /* 延伸到Y轴最大值位置，包含图表标题和padding */
-                bottom: 0;
-                width: 1px;
-                background-color: #e1e6eb;
-                pointer-events: none;
-            }
-
-            .label-column:last-child {
-                border-right: none;
-            }
-
+        .label-column::after {
+            content: '';
+            position: absolute;
+            right: -0.5px;
+            top: -260px;
+            bottom: 0;
+            width: 1px;
+            background-color: #e1e6eb;
+            pointer-events: none;
+        }
+        
+        .label-column:last-child {
+            border-right: none;
+        }
+        
         .group-header {
             font-weight: 700;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
             color: #2c3e50;
             font-size: 15px;
             width: 100%;
             text-align: center;
         }
-
+        
         .operation-label {
             font-size: 13px;
             color: #000000;
@@ -126,7 +178,7 @@
             width: 100%;
             text-align: center;
         }
-
+        
         .value-label {
             font-size: 11px;
             color: #5a6c7d;
@@ -139,7 +191,7 @@
             width: 100%;
             text-align: center;
         }
-
+        
         .group-separator {
             position: absolute;
             top: 0;
@@ -148,36 +200,40 @@
             background-color: #c8d0d9;
             z-index: 10;
         }
-
+        
         .legend-item {
             display: flex;
             align-items: center;
             margin-bottom: 8px;
             padding: 4px 0;
         }
-
+        
         .legend-line {
             width: 25px;
             height: 2px;
             margin-right: 10px;
             border-radius: 1px;
         }
-
+        
         .legend-dashed {
-            background: repeating-linear-gradient( to right, #ff6b6b 0px, #ff6b6b 4px, transparent 4px, transparent 8px );
+            background: repeating-linear-gradient(
+                to right,
+                #ff6b6b 0px,
+                #ff6b6b 4px,
+                transparent 4px,
+                transparent 8px
+            );
             height: 2px;
         }
-
+        
         .legend-solid {
             height: 2px;
         }
-
-        /* 确保tooltip显示在最前面 */
+        
         #myChart + .chartjs-tooltip {
             z-index: 9999 !important;
         }
-
-        /* 全局tooltip样式调整 */
+        
         .chartjs-tooltip {
             z-index: 9999 !important;
             position: absolute !important;
@@ -186,44 +242,94 @@
 </head>
 <body>
     <div class="chart-container">
+        <div class="control-panel">
+            <select id="SelectAB">
+                <option value="A面">A面</option>
+                <option value="B面">B面</option>
+            </select>
+            <div class="average-display" id="averageDisplay">A面 平均値：***</div>
+        </div>
+        
         <div class="chart-wrapper">
-            <div class="chart-area">
-                <!-- 分组背景容器 -->
+            <div class="canvas-wrapper">
                 <div class="group-background" id="groupBackground"></div>
 
-                <canvas id="myChart" width="1426" height="239"></canvas>
+                <div class="chart-canvas-area">
+                    <div class="chart-area">
+                        <canvas id="myChart" width="713" height="260"></canvas>
+                    </div>
+                </div>
 
-                <!-- X轴标签容器 -->
                 <div class="x-axis-labels" id="xAxisLabels"></div>
             </div>
 
-
-            <!-- 图例容器 -->
             <div class="legend-container" id="legendContainer"></div>
         </div>
     </div>
 
     <script>
-        // 生成随机数据点
+        let currentSide = 'A面';
+
         function generateDataPoints() {
             const points = [];
             for (let i = 0; i < 20; i++) {
-                // 生成2.0到2.9之间的随机数，保留3位小数
                 const value = 2.0 + Math.random() * 0.9;
                 points.push(Math.round(value * 1000) / 1000);
             }
             return points;
         }
 
-        // 创建数据集
+        function generateDataPointsForBSide() {
+            const points = [];
+            for (let i = 0; i < 20; i++) {
+                const value = 1.7 + Math.random() * (2.6 - 1.7);
+                points.push(Math.round(value * 1000) / 1000);
+            }
+            return points;
+        }
+
+        function calculateAverage(side) {
+            const currentDatasets = side === 'A面' ? sideADatasets : sideBDatasets;
+            const startIndex = side === 'A面' ? 0 : 10;
+            const endIndex = side === 'A面' ? 10 : 20;
+            let sum = 0;
+            let count = 0;
+
+            // 只计算第3行（红色文字，lotIndex=2）的数据平均值
+            const lotIndex = 2;
+            for (let i = startIndex; i < endIndex; i++) {
+                sum += currentDatasets[lotIndex].data[i];
+                count++;
+            }
+
+            return (sum / count).toFixed(3);
+        }
+
+        function updateAverageDisplay() {
+            const avg = calculateAverage(currentSide);
+            document.getElementById('averageDisplay').textContent = currentSide + ' 平均値：' + avg;
+        }
+
         const datasets = [];
         const lotNumbers = ['1402122501', '1402122502', '1402122503', '1402122504', '1402122505'];
         const colors = ['#808080', '#a0a0a0', '#ff3333', '#707070', '#909090'];
 
+        // A面数据
+        const sideAData = [];
+        for (let i = 0; i < 5; i++) {
+            sideAData.push(generateDataPoints());
+        }
+
+        // B面数据
+        const sideBData = [];
+        for (let i = 0; i < 5; i++) {
+            sideBData.push(generateDataPointsForBSide());
+        }
+
         for (let i = 0; i < 5; i++) {
             datasets.push({
                 label: lotNumbers[i],
-                data: generateDataPoints(),
+                data: sideAData[i],
                 borderColor: colors[i],
                 backgroundColor: colors[i] + '20',
                 borderWidth: 2,
@@ -237,7 +343,6 @@
             });
         }
 
-        // 添加上限和下限线
         datasets.push({
             label: '規格値上限値',
             data: new Array(20).fill(3.4),
@@ -260,18 +365,35 @@
             type: 'line'
         });
 
-        // 准备X轴标签
+        const originalDatasets = datasets.map(dataset => ({
+            ...dataset,
+            data: [...dataset.data]
+        }));
+
+        // 保存A面和B面的数据
+        const sideADatasets = originalDatasets.map(dataset => ({
+            ...dataset,
+            data: [...dataset.data]
+        }));
+
+        const sideBDatasets = [
+            { ...originalDatasets[0], data: [...sideBData[0]] },
+            { ...originalDatasets[1], data: [...sideBData[1]] },
+            { ...originalDatasets[2], data: [...sideBData[2]] },
+            { ...originalDatasets[3], data: [...sideBData[3]] },
+            { ...originalDatasets[4], data: [...sideBData[4]] },
+            { ...originalDatasets[5], data: new Array(20).fill(2.8) },
+            { ...originalDatasets[6], data: new Array(20).fill(1.6) }
+        ];
+
         const xLabels = [];
-        // A面：1到10
         for (let i = 1; i <= 10; i++) {
             xLabels.push(i.toString());
         }
-        // B面：1到10
         for (let i = 1; i <= 10; i++) {
             xLabels.push(i.toString());
         }
 
-        // 创建图表
         const ctx = document.getElementById('myChart').getContext('2d');
         const myChart = new Chart(ctx, {
             type: 'line',
@@ -287,9 +409,8 @@
                         display: false
                     },
                     tooltip: {
-                        enabled: false, // 禁用默认tooltip
-                        external: function (context) {
-                            // Tooltip element
+                        enabled: false,
+                        external: function(context) {
                             const tooltipEl = document.getElementById('chartjs-tooltip');
 
                             if (!tooltipEl) {
@@ -307,7 +428,6 @@
                                 document.body.appendChild(div);
                             }
 
-                            // Hide if no tooltip
                             const tooltipModel = context.tooltip;
                             if (tooltipModel.opacity === 0) {
                                 if (tooltipEl) {
@@ -316,14 +436,13 @@
                                 return;
                             }
 
-                            // Set Text
                             if (tooltipModel.body) {
                                 const titleLines = tooltipModel.title || [];
                                 const bodyLines = tooltipModel.body.map(b => b.lines);
 
                                 let innerHtml = '<div style="color: #2c3e50; font-weight: 500; margin-bottom: 6px;">' + titleLines[0] + '</div>';
 
-                                bodyLines.forEach(function (body, i) {
+                                bodyLines.forEach(function(body, i) {
                                     const colors = tooltipModel.labelColors[i];
                                     const style = 'display: flex; align-items: center; margin-bottom: 4px;';
                                     const colorBox = '<span style="display: inline-block; width: 10px; height: 10px; background-color: ' + colors.backgroundColor + '; margin-right: 8px; border: 1px solid ' + colors.borderColor + ';"></span>';
@@ -335,7 +454,6 @@
 
                             const position = context.chart.canvas.getBoundingClientRect();
 
-                            // Display, position, and set styles for font
                             tooltipEl.style.opacity = 1;
                             tooltipEl.style.position = 'absolute';
                             tooltipEl.style.left = position.left + window.pageXOffset + tooltipModel.caretX + 'px';
@@ -356,7 +474,9 @@
                         },
                         ticks: {
                             display: false
-                        }
+                        },
+                        min: 0,
+                        max: 9
                     },
                     y: {
                         min: 1.5,
@@ -382,7 +502,7 @@
                                 size: 12,
                                 weight: '500'
                             },
-                            padding: { top: 0, bottom: 10 }
+                            padding: {top: 0, bottom: 10}
                         }
                     }
                 },
@@ -401,115 +521,84 @@
             }
         });
 
-        // 创建分组背景
         function createGroupBackgrounds() {
             const container = document.getElementById('groupBackground');
             const chartArea = myChart.chartArea;
             const meta = myChart.getDatasetMeta(0);
 
-            // 清空容器
             container.innerHTML = '';
 
-            // 设置容器位置和大小
             container.style.left = chartArea.left + 'px';
             container.style.width = (chartArea.right - chartArea.left) + 'px';
             container.style.top = chartArea.top + 'px';
-            container.style.height = (chartArea.bottom - chartArea.top) + 'px'; // 覆盖整个图表区域
+            container.style.height = (chartArea.bottom - chartArea.top) + 'px';
 
             const containerWidth = chartArea.right - chartArea.left;
-            const pointSpacing = containerWidth / 19; // 20个点，19个间隔
 
-            // 为每个组创建背景，A面和B面各10列
-            for (let groupIndex = 0; groupIndex < 2; groupIndex++) {
-                const bgDiv = document.createElement('div');
-                bgDiv.style.position = 'absolute';
+            const bgDiv = document.createElement('div');
+            bgDiv.style.position = 'absolute';
+            bgDiv.style.left = '0';
+            bgDiv.style.width = containerWidth + 'px';
+            bgDiv.style.top = '0';
+            bgDiv.style.height = '100%';
 
-                const startPoint = groupIndex * 10;
-                const endPoint = Math.min((groupIndex + 1) * 10, 20);
-
-                let leftPosition;
-                let rightPosition;
-
-                if (groupIndex === 0) {
-                    leftPosition = 0;
-                } else {
-                    leftPosition = startPoint * pointSpacing - pointSpacing / 2;
-                }
-
-                if (groupIndex === 1) {
-                    rightPosition = containerWidth;
-                } else {
-                    rightPosition = endPoint * pointSpacing - pointSpacing / 2;
-                }
-
-                const groupWidth = rightPosition - leftPosition;
-
-                bgDiv.style.left = leftPosition + 'px';
-                bgDiv.style.width = groupWidth + 'px';
-                bgDiv.style.top = '0';
-                bgDiv.style.height = '100%';
-
-                // A面（第1组）添加淡蓝色背景，B面保持透明
-                if ((groupIndex + 1) % 2 === 1) {
-                    bgDiv.classList.add('group-bg-odd');
-                } else {
-                    bgDiv.classList.add('group-bg-even');
-                }
-
-                container.appendChild(bgDiv);
+            if (currentSide === 'A面') {
+                bgDiv.classList.add('group-bg-odd');
+            } else {
+                bgDiv.classList.add('group-bg-even');
             }
+
+            container.appendChild(bgDiv);
         }
 
-        // 创建X轴标签（与数据点完美对齐）
         function createXAxisLabels() {
             const container = document.getElementById('xAxisLabels');
+            const canvasWrapper = document.querySelector('.canvas-wrapper');
             const chartArea = myChart.chartArea;
             const meta = myChart.getDatasetMeta(0);
 
-            // 清空容器
             container.innerHTML = '';
 
-            // 设置容器位置
-            const containerLeft = chartArea.left;
+            const wrapperRect = canvasWrapper.getBoundingClientRect();
+            const canvasWrapperWidth = wrapperRect.width - 135;
+
+            container.style.left = chartArea.left + 'px';
+            container.style.width = (chartArea.right - chartArea.left) + 'px';
+
             const containerWidth = chartArea.right - chartArea.left;
-            container.style.left = containerLeft + 'px';
-            container.style.width = containerWidth + 'px';
+            const pointSpacing = containerWidth / 9;
 
-            // 计算每个数据点的X坐标间隔
-            const pointSpacing = containerWidth / 19; // 20个点，19个间隔
+            const startIndex = currentSide === 'A面' ? 0 : 10;
+            const endIndex = currentSide === 'A面' ? 10 : 20;
 
-            // 创建20个标签列（每个数据点一列）
-            for (let i = 0; i < 20; i++) {
+            for (let dataIndex = 0; dataIndex < 10; dataIndex++) {
+                const i = startIndex + dataIndex;
                 const columnDiv = document.createElement('div');
                 columnDiv.className = 'label-column';
 
-                // 计算列的位置和宽度
-                const columnCenterX = i * pointSpacing;
+                const columnCenterX = dataIndex * pointSpacing;
                 const columnWidth = pointSpacing * 0.9;
                 const columnLeft = columnCenterX - columnWidth / 2;
 
                 columnDiv.style.left = columnLeft + 'px';
                 columnDiv.style.width = columnWidth + 'px';
 
-                // 添加组名（A面或B面）
                 const groupHeader = document.createElement('div');
                 groupHeader.className = 'group-header';
-                groupHeader.textContent = i < 10 ? 'A面' : 'B面';
+                groupHeader.textContent = currentSide;
                 columnDiv.appendChild(groupHeader);
 
-                // 添加操作标签（1到10）
                 const operationLabel = document.createElement('div');
                 operationLabel.className = 'operation-label';
-                operationLabel.textContent = (i % 10) + 1;
+                operationLabel.textContent = dataIndex + 1;
                 columnDiv.appendChild(operationLabel);
 
-                // 添加5个Lot的数据值
                 for (let lotIndex = 0; lotIndex < 5; lotIndex++) {
                     const valueLabel = document.createElement('div');
                     valueLabel.className = 'value-label';
-                    const value = myChart.data.datasets[lotIndex].data[i];
+                    const currentDatasets = currentSide === 'A面' ? sideADatasets : sideBDatasets;
+                    const value = currentDatasets[lotIndex].data[i];
                     valueLabel.textContent = value.toFixed(3);
-                    // 第三个Lot（索引为2）的数据值使用红色
                     if (lotIndex === 2) {
                         valueLabel.style.color = '#ff3333';
                     }
@@ -518,46 +607,84 @@
 
                 container.appendChild(columnDiv);
             }
-
         }
 
-        // 创建自定义图例
         function createCustomLegend() {
             const container = document.getElementById('legendContainer');
             const allDatasets = myChart.data.datasets;
-
+            
             allDatasets.forEach((dataset, index) => {
                 const legendItem = document.createElement('div');
                 legendItem.className = 'legend-item';
-
+                
                 const lineDiv = document.createElement('div');
                 lineDiv.className = 'legend-line';
-
+                
                 if (dataset.label.includes('規格値')) {
                     lineDiv.classList.add('legend-dashed');
                 } else {
                     lineDiv.classList.add('legend-solid');
                     lineDiv.style.backgroundColor = dataset.borderColor;
                 }
-
+                
                 const textDiv = document.createElement('div');
                 textDiv.textContent = dataset.label;
                 textDiv.style.color = '#2c3e50';
                 textDiv.style.fontWeight = '500';
-
+                
                 legendItem.appendChild(lineDiv);
                 legendItem.appendChild(textDiv);
                 container.appendChild(legendItem);
             });
         }
 
+        function updateChartDataRange() {
+            const startIndex = currentSide === 'A面' ? 0 : 10;
+            const endIndex = currentSide === 'A面' ? 10 : 20;
 
+            const newLabels = [];
+            for (let i = startIndex; i < endIndex; i++) {
+                newLabels.push(xLabels[i]);
+            }
+            myChart.data.labels = newLabels;
 
-        // 等待图表渲染完成后创建自定义元素
+            const currentDatasets = currentSide === 'A面' ? sideADatasets : sideBDatasets;
+
+            myChart.data.datasets.forEach((dataset, index) => {
+                if (index < 5) {
+                    const newData = currentDatasets[index].data.slice(startIndex, endIndex);
+                    dataset.data = newData;
+                } else {
+                    dataset.data = new Array(10).fill(currentDatasets[index].data[0]);
+                }
+            });
+
+            // 更新Y轴范围
+            if (currentSide === 'A面') {
+                myChart.options.scales.y.min = 1.5;
+                myChart.options.scales.y.max = 3.5;
+            } else {
+                myChart.options.scales.y.min = 1.2;
+                myChart.options.scales.y.max = 3.0;
+            }
+
+            myChart.update();
+        }
+
+        document.getElementById('SelectAB').addEventListener('change', function(e) {
+            currentSide = e.target.value;
+            updateChartDataRange();
+            createGroupBackgrounds();
+            createXAxisLabels();
+            updateAverageDisplay();
+        });
+
         setTimeout(() => {
+            updateChartDataRange();
             createGroupBackgrounds();
             createXAxisLabels();
             createCustomLegend();
+            updateAverageDisplay();
         }, 100);
     </script>
 </body>
