@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>品質検査データ折線図</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            margin: 20px;
+            padding: 20px;
+            font-family: 'Segoe UI', 'Microsoft YaHei', Arial, sans-serif;
+            background: #f5f7fa;
+        }
+        
+        .main-container {
+            width: 1211px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        
+        .chart-wrapper {
+            position: relative;
+            display: flex;
+            gap: 20px;
+        }
+
+        .chart-section {
+            flex: 1;
+            position: relative;
+        }
+
+        .y-axis-label {
+            position: absolute;
+            left: 15px;
+            top: 10px;
+            transform: rotate(-90deg);
+            transform-origin: left top;
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            white-space: nowrap;
+            z-index: 10;
+        }
+
+        .canvas-container {
+            position: relative;
+            height: 500px;
+        }
+        
+        .x-axis-custom {
+            position: relative;
+            height: 150px;
+            border-top: 2px solid #333;
+            margin-top: 10px;
+        }
+        
+        .x-column {
+            position: absolute;
+            bottom: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transform: translateX(-50%);
+            z-index: 2;
+        }
+        
+        .x-label-bottom {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            margin-top: 5px;
+        }
+        
+        .x-label-top {
+            writing-mode: vertical-rl;
+            text-orientation: upright;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 10px;
+            white-space: nowrap;
+            height: 120px;
+            display: flex;
+            align-items: center;
+            letter-spacing: 2px;
+        }
+        
+        .separator-line {
+            position: absolute;
+            bottom: 0;
+            width: 1px;
+            z-index: 1;
+        }
+        
+        .separator-line.major {
+            background-color: #000;
+            height: 650px;
+        }
+        
+        .separator-line.minor {
+            background-color: #ddd;
+            height: 150px;
+        }
+        
+        .sidebar {
+            width: 200px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .legend-box {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 15px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .legend-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .legend-line {
+            width: 30px;
+            height: 2px;
+            margin-right: 10px;
+        }
+        
+        .legend-label {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .checkbox-box {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 15px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .checkbox-item input {
+            margin-right: 8px;
+            cursor: pointer;
+        }
+        
+        .checkbox-item label {
+            font-size: 12px;
+            color: #666;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <h2 style="text-align: center; color: #333; margin-bottom: 20px;"></h2>
+        
+        <div class="chart-wrapper">
+            <div class="chart-section">
+                <div class="canvas-container">
+                    <div class="y-axis-label">付量測定[g/m²]</div>
+                    <canvas id="myChart"></canvas>
+                </div>
+                <div class="x-axis-custom" id="xAxisCustom"></div>
+            </div>
+            
+            <div class="sidebar">
+                <div class="legend-box">
+                    <div class="legend-title">凡例</div>
+                    <div id="legendContainer"></div>
+                </div>
+                
+                <div class="checkbox-box">
+                    <div class="legend-title">表示項目</div>
+                    <div id="checkboxContainer"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const lotNumbers = ['1402122501', '1402122502', '1402122503', '1402122504', '1402122505'];
+        const colors = ['#808080', '#a0a0a0', '#ff3333', '#707070', '#909090'];
+        const options = [
+            'A面実測値',
+            'A面PET重量',
+            'A面㎡換算',
+            'B面実測値',
+            'B面PET重量',
+            'B面㎡換算'
+        ];
+        const subLabels = ['操', '中', '駆'];
+        
+        let activeOptions = options.map(() => true);
+        let chart = null;
+        
+        function generateRandomValue(min, max) {
+            return parseFloat((Math.random() * (max - min) + min).toFixed(3));
+        }
+
+        function generateDataset() {
+            const datasets = [];
+
+            // 定义每个选项的数据范围 [最小值, 最大值]
+            const valueRanges = [
+                [0, 2],       // A面実測値(g/0.01m²)
+                [0, 2],       // A面PET重量
+                [8, 12],      // A面㎡換算
+                [0, 2],       // B面実測値
+                [0, 2],       // B面PET重量
+                [6, 12]       // B面㎡換算
+            ];
+
+            lotNumbers.forEach((lot, index) => {
+                const data = [];
+                // 生成6组数据，每组3个子标签（操、中、駆），共18个数据点
+                for (let i = 0; i < valueRanges.length; i++) {
+                    const [min, max] = valueRanges[i];
+                    for (let j = 0; j < 3; j++) {
+                        data.push(generateRandomValue(min, max));
+                    }
+                }
+
+                datasets.push({
+                    label: lot,
+                    data: data,
+                    borderColor: colors[index],
+                    backgroundColor: colors[index],
+                    borderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    tension: 0.1,
+                    fill: false
+                });
+            });
+
+            return datasets;
+        }
+        
+        function getActiveLabels() {
+            const labels = [];
+            options.forEach((option, index) => {
+                if (activeOptions[index]) {
+                    subLabels.forEach((subLabel) => {
+                        labels.push(subLabel);
+                    });
+                }
+            });
+            return labels;
+        }
+        
+        function getActiveDataIndices() {
+            const indices = [];
+            options.forEach((option, index) => {
+                if (activeOptions[index]) {
+                    const baseIndex = index * 3;
+                    indices.push(baseIndex, baseIndex + 1, baseIndex + 2);
+                }
+            });
+            return indices;
+        }
+        
+        function filterDataByActiveOptions(data) {
+            const activeIndices = getActiveDataIndices();
+            return activeIndices.map(i => data[i]);
+        }
+        
+        function createChart() {
+            const ctx = document.getElementById('myChart').getContext('2d');
+
+            if (chart) {
+                chart.destroy();
+            }
+
+            const datasets = generateDataset();
+            const filteredDatasets = datasets.map(dataset => ({
+                ...dataset,
+                data: filterDataByActiveOptions(dataset.data)
+            }));
+
+            const totalActiveColumns = activeOptions.filter(a => a).length * 3;
+
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: getActiveLabels(),
+                    datasets: filteredDatasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            display: false,
+                            offset: false,
+                            grid: {
+                                offset: false,
+                                drawOnChartArea: false
+                            },
+                            ticks: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            min: 0,
+                            max: 15,
+                            ticks: {
+                                stepSize: 1
+                            },
+                            grid: {
+                                color: '#e0e0e0'
+                            }
+                        }
+                    },
+                    layout: {
+                        padding: {
+                            left: 60,
+                            right: 0,
+                            top: 10,
+                            bottom: 10
+                        }
+                    }
+                }
+            });
+
+            updateCustomXAxis();
+            updateYAxisLabel();
+        }
+
+        function updateYAxisLabel() {
+            const label = document.querySelector('.y-axis-label');
+            if (!chart || !chart.scales || !chart.scales.y || !label) return;
+
+            const yScale = chart.scales.y;
+
+            // 计算Y轴绘图区域的高度和位置
+            const chartTop = yScale.top;
+            const chartBottom = yScale.bottom;
+            const chartHeight = chartBottom - chartTop;
+
+            // 将标签定位在Y轴绘图区域的中心
+            const labelTop = chartTop + (chartHeight / 2);
+
+            label.style.top = labelTop + 'px';
+        }
+        
+        function updateCustomXAxis() {
+            const container = document.getElementById('xAxisCustom');
+            container.innerHTML = '';
+
+            const totalActiveColumns = activeOptions.filter(a => a).length * 3;
+
+            // 使用Chart.js的内部信息获取准确的x轴比例
+            if (!chart || !chart.scales || !chart.scales.x) return;
+
+            const xScale = chart.scales.x;
+            const yAxisWidth = xScale.left;
+            const effectiveWidth = xScale.width;
+
+            const columnWidth = effectiveWidth / totalActiveColumns;
+            const halfColumnWidth = columnWidth / 2;
+
+            // 先添加文字标签
+            let columnIndex = 0;
+            options.forEach((option, optIndex) => {
+                if (!activeOptions[optIndex]) return;
+
+                subLabels.forEach((subLabel, subIndex) => {
+                    const column = document.createElement('div');
+                    column.className = 'x-column';
+
+                    // 计算数据点的x位置（Chart.js的数据点位于每个刻度的中心）
+                    const dataPointX = xScale.getPixelForValue(columnIndex);
+                    const leftPosition = dataPointX;
+
+                    column.style.left = leftPosition + 'px';
+                    column.style.width = columnWidth + 'px';
+
+                    const topLabel = document.createElement('div');
+                    topLabel.className = 'x-label-top';
+                    topLabel.textContent = option;
+
+                    const bottomLabel = document.createElement('div');
+                    bottomLabel.className = 'x-label-bottom';
+                    bottomLabel.textContent = subLabel;
+
+                    column.appendChild(topLabel);
+                    column.appendChild(bottomLabel);
+                    container.appendChild(column);
+
+                    columnIndex++;
+                });
+            });
+
+            // 后添加分割线（使其位于文字上方，但在文字两侧）
+            let tempColumnIndex = 0;
+            options.forEach((option, optIndex) => {
+                if (!activeOptions[optIndex]) return;
+
+                subLabels.forEach((subLabel, subIndex) => {
+                    if (subIndex < subLabels.length - 1) {
+                        // 次要分割线：位于两个数据点之间
+                        const separator = document.createElement('div');
+                        separator.className = 'separator-line minor';
+                        const currentDataPointX = xScale.getPixelForValue(tempColumnIndex);
+                        const nextDataPointX = xScale.getPixelForValue(tempColumnIndex + 1);
+                        const separatorPosition = (currentDataPointX + nextDataPointX) / 2;
+                        separator.style.left = separatorPosition + 'px';
+                        container.appendChild(separator);
+                    }
+                    tempColumnIndex++;
+                });
+
+                if (optIndex < options.length - 1 && activeOptions.slice(optIndex + 1).some(a => a)) {
+                    // 主要分割线：位于两组数据之间
+                    const separator = document.createElement('div');
+                    separator.className = 'separator-line major';
+                    const currentDataPointX = xScale.getPixelForValue(tempColumnIndex - 1);
+                    const nextDataPointX = xScale.getPixelForValue(tempColumnIndex);
+                    const separatorPosition = (currentDataPointX + nextDataPointX) / 2;
+                    separator.style.left = separatorPosition + 'px';
+                    container.appendChild(separator);
+                }
+            });
+        }
+        
+        function createLegend() {
+            const container = document.getElementById('legendContainer');
+            container.innerHTML = '';
+            
+            lotNumbers.forEach((lot, index) => {
+                const item = document.createElement('div');
+                item.className = 'legend-item';
+                
+                const line = document.createElement('div');
+                line.className = 'legend-line';
+                line.style.backgroundColor = colors[index];
+                
+                const label = document.createElement('span');
+                label.className = 'legend-label';
+                label.textContent = lot;
+                
+                item.appendChild(line);
+                item.appendChild(label);
+                container.appendChild(item);
+            });
+        }
+        
+        function createCheckboxes() {
+            const container = document.getElementById('checkboxContainer');
+            container.innerHTML = '';
+            
+            options.forEach((option, index) => {
+                const item = document.createElement('div');
+                item.className = 'checkbox-item';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = 'opt' + index;
+                checkbox.checked = true;
+                checkbox.addEventListener('change', function() {
+                    activeOptions[index] = this.checked;
+                    createChart();
+                });
+                
+                const label = document.createElement('label');
+                label.htmlFor = 'opt' + index;
+                label.textContent = option;
+                
+                item.appendChild(checkbox);
+                item.appendChild(label);
+                container.appendChild(item);
+            });
+        }
+        
+        window.addEventListener('load', function() {
+            createLegend();
+            createCheckboxes();
+            createChart();
+        });
+        
+        window.addEventListener('resize', function() {
+            if (chart) {
+                updateCustomXAxis();
+                updateYAxisLabel();
+            }
+        });
+    </script>
+</body>
+</html>
