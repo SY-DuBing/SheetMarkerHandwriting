@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>統計データ</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.1.0"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        /* Block A */
+        #blockA {
+            margin-bottom: 30px;
+        }
+
+        .lot-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .lot-box {
+            width: 120px;
+            height: 60px;
+            border: 2px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            background-color: white;
+            transition: background-color 0.3s;
+            font-weight: bold;
+        }
+
+            .lot-box.selected {
+                background-color: #007bff;
+                color: white;
+            }
+
+            .lot-box:hover {
+                opacity: 0.8;
+            }
+
+        .time-range {
+            margin-bottom: 15px;
+            font-size: 16px;
+            color: #333;
+            font-weight: bold;
+        }
+
+        .control-area {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 14px;
+            cursor: pointer;
+            border: 1px solid #333;
+            background-color: white;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+
+            button:hover {
+                background-color: #f0f0f0;
+            }
+
+        .settings-area {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 8px 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+
+        .setting-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+            .setting-item label {
+                font-size: 14px;
+                white-space: nowrap;
+            }
+
+            .setting-item input[type="number"] {
+                width: 70px;
+                padding: 5px;
+                border: 1px solid #ccc;
+                border-radius: 3px;
+                font-size: 14px;
+            }
+
+            .setting-item input[type="checkbox"] {
+                width: 18px;
+                height: 18px;
+                cursor: pointer;
+            }
+
+        /* Block B */
+        #blockB {
+            display: none;
+            margin-bottom: 30px;
+        }
+
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+            .table-header h2 {
+                font-size: 20px;
+            }
+
+        #excelExport {
+            cursor: pointer;
+            font-size: 24px;
+            color: #28a745;
+            transition: color 0.3s;
+        }
+
+            #excelExport:hover {
+                color: #218838;
+            }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #EEF7FC;
+            color: black;
+            font-weight: bold;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        /* Block C */
+        #blockC {
+            display: none;
+        }
+
+        .charts-row {
+            display: flex;
+            gap: 30px;
+            margin-bottom: 20px;
+        }
+
+        .chart-container {
+            flex: 1;
+            min-width: 0;
+        }
+
+            .chart-container h3 {
+                margin-bottom: 15px;
+                font-size: 18px;
+                text-align: center;
+            }
+
+        .chart-wrapper {
+            position: relative;
+            height: 400px;
+            width: 100%;
+        }
+
+        @media (max-width: 1200px) {
+            .charts-row {
+                flex-direction: column;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .lot-box {
+                width: 100px;
+                height: 50px;
+                font-size: 12px;
+            }
+
+            .control-area {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .settings-area {
+                flex-direction: column;
+                align-items: flex-start;
+                width: 100%;
+            }
+
+            table {
+                font-size: 12px;
+            }
+
+            th, td {
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Block A -->
+        <div id="blockA">
+            <div class="lot-container" id="lotContainer"></div>
+            <div class="time-range" id="timeRange"></div>
+            <div class="control-area">
+                <div class="button-group">
+                    <button id="resetBtn">リセット</button>
+                    <button id="calculateBtn">自動計算</button>
+                </div>
+                <div class="settings-area">
+                    <div class="setting-item">
+                        <label for="binCount">区間数：</label>
+                        <input type="number" id="binCount" min="3" max="50" value="10">
+                    </div>
+                    <div class="setting-item">
+                        <label for="showAverage">平均値：</label>
+                        <input type="checkbox" id="showAverage">
+                        <span id="averageLabel">非表示</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Block B -->
+        <div id="blockB" style="display: none;">
+            <div class="table-header">
+                <h2>統計表</h2>
+                <span id="excelExport" title="Excelに出力">📊</span>
+            </div>
+            <table id="dataTable">
+                <thead>
+                    <tr>
+                        <th>項目</th>
+                        <th>全光線透過率【%】</th>
+                        <th>ヘーズ【%】</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>平均値</td>
+                        <td>91.8</td>
+                        <td>88.6</td>
+                    </tr>
+                    <tr>
+                        <td>最大値</td>
+                        <td>94.2</td>
+                        <td>91.3</td>
+                    </tr>
+                    <tr>
+                        <td>最小値</td>
+                        <td>90.1</td>
+                        <td>87.2</td>
+                    </tr>
+                    <tr>
+                        <td>標準偏差</td>
+                        <td>0.85</td>
+                        <td>0.92</td>
+                    </tr>
+                    <tr>
+                        <td>データ数</td>
+                        <td>273</td>
+                        <td>274</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Block Table -->
+        <div id="blockTable" style="display: none;">
+            <div class="table-header">
+                <h2>統計データ</h2>
+                <span id="excelExportBlockTable" title="Excelに出力">📊</span>
+            </div>
+            <table id="blockDataTable">
+                <thead>
+                    <tr>
+                        <th>測定位置</th>
+                        <th>下限</th>
+                        <th>上限</th>
+                        <th>ｎ数</th>
+                        <th>平均値</th>
+                        <th>最小値</th>
+                        <th>最大値</th>
+                        <th>標準偏差</th>
+                        <th>Cp</th>
+                        <th>K</th>
+                        <th>CpK</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>全データ</td>
+                        <td>23.0</td>
+                        <td>22.0</td>
+                        <td>22</td>
+                        <td>120</td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>1</td>
+                        <td>23.0</td>
+                        <td>21.8</td>
+                        <td>22</td>
+                        <td>120</td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>2</td>
+                        <td>23.0</td>
+                        <td>21.8</td>
+                        <td>22</td>
+                        <td>120</td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>3</td>
+                        <td>23.0</td>
+                        <td>21.8</td>
+                        <td>22</td>
+                        <td>120</td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Block C -->
+        <div id="blockC">
+            <div class="charts-row">
+                <div class="chart-container">
+                    <h3>A面</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="chartA"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <h3>B面</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="chartB"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Lot番号データ
+        const lotNumbers = [
+            '1402122501', '1402122502', '1402122503', '1402122504', '1402122505',
+            '1402122506', '1402122507', '1402122508', '1402122509', '1402122510',
+            '1402122511', '1402122512', '1402122513', '1402122514', '1402122515'
+        ];
+
+        // 時間計算
+        const lotTimes = [];
+        const baseDate = new Date('2025-01-15T08:30:00');
+
+        for (let i = 0; i < lotNumbers.length; i++) {
+            const startTime = new Date(baseDate.getTime() + i * 30 * 60000); // 30分間隔
+            const endTime = new Date(startTime.getTime() + 20 * 60000); // 20分間の製造時間
+            lotTimes.push({ startTime, endTime });
+        }
+
+        // Lot boxを生成
+        const lotContainer = document.getElementById('lotContainer');
+        lotNumbers.forEach((lot, index) => {
+            const box = document.createElement('div');
+            box.className = 'lot-box';
+            box.textContent = lot;
+            box.dataset.index = index;
+            lotContainer.appendChild(box);
+        });
+
+        // 初期選択状態
+        let selectedIndices = [0];
+        document.querySelector('.lot-box').classList.add('selected');
+
+        // 時間範囲を更新
+        function updateTimeRange() {
+            const label = document.getElementById('timeRange');
+
+            if (selectedIndices.length === 0) {
+                label.style.display = 'none';
+                return;
+            }
+
+            const minIndex = Math.min(...selectedIndices);
+            const maxIndex = Math.max(...selectedIndices);
+            const startTime = lotTimes[minIndex].startTime;
+            const endTime = lotTimes[maxIndex].endTime;
+
+            const formatTime = (date) => {
+                const year = date.getFullYear();
+                const month = date.getMonth() + 1;
+                const day = date.getDate();
+                const hours = date.getHours();
+                const minutes = date.getMinutes();
+                return `${year}年${month}月${day}日 ${hours}:${minutes.toString().padStart(2, '0')}`;
+            };
+
+            label.textContent = `統計時間範囲：${formatTime(startTime)} ～ ${formatTime(endTime)}`;
+            label.style.display = 'block';
+        }
+
+        // 初期表示
+        updateTimeRange();
+
+        // Lot boxクリックイベント
+        lotContainer.addEventListener('click', (e) => {
+            if (e.target.classList.contains('lot-box')) {
+                const index = parseInt(e.target.dataset.index);
+
+                if (selectedIndices.length === 1 && selectedIndices[0] === index) {
+                    return;
+                }
+
+                if (selectedIndices.length === 1) {
+                    const firstIndex = selectedIndices[0];
+                    const minIndex = Math.min(firstIndex, index);
+                    const maxIndex = Math.max(firstIndex, index);
+
+                    selectedIndices = [];
+                    for (let i = minIndex; i <= maxIndex; i++) {
+                        selectedIndices.push(i);
+                    }
+                } else {
+                    selectedIndices = [index];
+                }
+
+                document.querySelectorAll('.lot-box').forEach((box, i) => {
+                    if (selectedIndices.includes(i)) {
+                        box.classList.add('selected');
+                    } else {
+                        box.classList.remove('selected');
+                    }
+                });
+
+                updateTimeRange();
+            }
+        });
+
+        // リセットボタン
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            selectedIndices = [];
+            document.querySelectorAll('.lot-box').forEach(box => {
+                box.classList.remove('selected');
+            });
+            updateTimeRange();
+        });
+
+        // 平均値チェックボックス
+        const showAverageCheckbox = document.getElementById('showAverage');
+        const averageLabel = document.getElementById('averageLabel');
+
+        showAverageCheckbox.addEventListener('change', (e) => {
+            averageLabel.textContent = e.target.checked ? '表示' : '非表示';
+            if (chartA || chartB) {
+                createCharts();
+            }
+        });
+
+        // 区間数入力
+        const binCountInput = document.getElementById('binCount');
+        binCountInput.addEventListener('change', (e) => {
+            let value = parseInt(e.target.value);
+            if (value < 3) value = 3;
+            if (value > 50) value = 50;
+            e.target.value = value;
+            if (chartA || chartB) {
+                createCharts();
+            }
+        });
+
+        // 自動計算ボタン
+        document.getElementById('calculateBtn').addEventListener('click', () => {
+            // blockBは非表示のまま
+            // document.getElementById('blockB').style.display = 'block';
+            document.getElementById('blockTable').style.display = 'block';
+            document.getElementById('blockC').style.display = 'block';
+            createCharts();
+        });
+
+        // Excel出力（blockBの統計表）
+        document.getElementById('excelExport').addEventListener('click', () => {
+            const table = document.getElementById('dataTable');
+            const wb = XLSX.utils.table_to_book(table);
+            XLSX.writeFile(wb, '統計データ.xlsx');
+        });
+
+        // Excel出力（blockTableの統計表）
+        document.getElementById('excelExportBlockTable').addEventListener('click', () => {
+            const table = document.getElementById('blockDataTable');
+            const wb = XLSX.utils.table_to_book(table);
+            XLSX.writeFile(wb, '工程能力統計.xlsx');
+        });
+
+        // Chart.jsでグラフを作成
+        let chartA, chartB;
+
+        function createCharts() {
+            const binCount = parseInt(document.getElementById('binCount').value);
+            const showAverage = document.getElementById('showAverage').checked;
+
+            // Chart A
+            const ctxA = document.getElementById('chartA').getContext('2d');
+
+            if (chartA) {
+                chartA.destroy();
+            }
+
+            // 区間数に基づいてラベルとデータを生成
+            const labelsA = generateLabels(90, 94, binCount);
+            const dataA = generateData(binCount);
+
+            const annotationsA = {
+                line1: {
+                    type: 'line',
+                    xMin: 0.5,
+                    xMax: 0.5,
+                    borderColor: 'green',
+                    borderWidth: 2
+                },
+                line2: {
+                    type: 'line',
+                    xMin: Math.floor(binCount * 0.5) + 0.5,
+                    xMax: Math.floor(binCount * 0.5) + 0.5,
+                    borderColor: 'green',
+                    borderWidth: 2
+                },
+                line3: {
+                    type: 'line',
+                    xMin: Math.floor(binCount * 0.25) + 0.5,
+                    xMax: Math.floor(binCount * 0.25) + 0.5,
+                    borderColor: 'yellow',
+                    borderWidth: 2
+                }
+            };
+
+            if (showAverage) {
+                annotationsA.avgLine = {
+                    type: 'line',
+                    xMin: Math.floor(binCount * 0.45),
+                    xMax: Math.floor(binCount * 0.45),
+                    borderColor: 'red',
+                    borderWidth: 3,
+                    borderDash: [5, 5],
+                    label: {
+                        display: true,
+                        content: '平均値: 91.8%',
+                        position: 'start'
+                    }
+                };
+            }
+
+            chartA = new Chart(ctxA, {
+                type: 'bar',
+                data: {
+                    labels: labelsA,
+                    datasets: [{
+                        label: '頻度',
+                        data: dataA,
+                        backgroundColor: '#007bff',
+                        borderColor: '#0056b3',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    aspectRatio: 2,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 200,
+                            ticks: {
+                                stepSize: 50
+                            },
+                            title: {
+                                display: true,
+                                text: '頻度'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: '全光線透過率【%】'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        annotation: {
+                            annotations: annotationsA
+                        }
+                    }
+                }
+            });
+
+            // Chart B
+            const ctxB = document.getElementById('chartB').getContext('2d');
+
+            if (chartB) {
+                chartB.destroy();
+            }
+
+            const labelsB = generateLabels(87, 91, binCount);
+            const dataB = generateData(binCount);
+
+            const annotationsB = {
+                line1: {
+                    type: 'line',
+                    xMin: 0.5,
+                    xMax: 0.5,
+                    borderColor: 'green',
+                    borderWidth: 2
+                },
+                line2: {
+                    type: 'line',
+                    xMin: Math.floor(binCount * 0.5) + 0.5,
+                    xMax: Math.floor(binCount * 0.5) + 0.5,
+                    borderColor: 'green',
+                    borderWidth: 2
+                },
+                line3: {
+                    type: 'line',
+                    xMin: Math.floor(binCount * 0.25) + 0.5,
+                    xMax: Math.floor(binCount * 0.25) + 0.5,
+                    borderColor: 'yellow',
+                    borderWidth: 2
+                }
+            };
+
+            if (showAverage) {
+                annotationsB.avgLine = {
+                    type: 'line',
+                    xMin: Math.floor(binCount * 0.4),
+                    xMax: Math.floor(binCount * 0.4),
+                    borderColor: 'red',
+                    borderWidth: 3,
+                    borderDash: [5, 5],
+                    label: {
+                        display: true,
+                        content: '平均値: 88.6%',
+                        position: 'start'
+                    }
+                };
+            }
+
+            chartB = new Chart(ctxB, {
+                type: 'bar',
+                data: {
+                    labels: labelsB,
+                    datasets: [{
+                        label: '頻度',
+                        data: dataB,
+                        backgroundColor: '#007bff',
+                        borderColor: '#0056b3',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    aspectRatio: 2,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 200,
+                            ticks: {
+                                stepSize: 50
+                            },
+                            title: {
+                                display: true,
+                                text: '頻度'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: '全光線透過率【%】'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        annotation: {
+                            annotations: annotationsB
+                        }
+                    }
+                }
+            });
+        }
+
+        function generateLabels(min, max, count) {
+            const labels = [];
+            const range = max - min;
+            const step = range / count;
+
+            for (let i = 0; i < count; i++) {
+                const start = (min + i * step).toFixed(1);
+                const end = (min + (i + 1) * step).toFixed(1);
+                if (i === 0) {
+                    labels.push(`${start}未満`);
+                } else if (i === count - 1) {
+                    labels.push(`${start}以上`);
+                } else {
+                    labels.push(`${start}～\n${end}未満`);
+                }
+            }
+
+            return labels;
+        }
+
+        function generateData(count) {
+            const data = [];
+            const peak = Math.floor(count * 0.4);
+
+            for (let i = 0; i < count; i++) {
+                const distance = Math.abs(i - peak);
+                const value = Math.max(0, 100 - distance * 15 + Math.random() * 10);
+                data.push(Math.round(value));
+            }
+
+            return data;
+        }
+    </script>
+</body>
+</html>
