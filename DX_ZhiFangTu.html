@@ -1,0 +1,629 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>統計データ HTML</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        /* Block A styles */
+        #blockA {
+            margin-bottom: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .lot-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .lot-box {
+            min-width: 100px;
+            padding: 15px;
+            border: 2px solid #ccc;
+            border-radius: 5px;
+            text-align: center;
+            cursor: pointer;
+            background-color: white;
+            transition: all 0.3s;
+        }
+
+            .lot-box:hover {
+                border-color: #666;
+            }
+
+            .lot-box.selected {
+                background-color: #007bff;
+                color: white;
+                border-color: #007bff;
+            }
+
+        .button-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        #resetBtn {
+            background-color: #6c757d;
+            color: white;
+        }
+
+            #resetBtn:hover {
+                background-color: #5a6268;
+            }
+
+        #calculateBtn {
+            background-color: #28a745;
+            color: white;
+        }
+
+            #calculateBtn:hover {
+                background-color: #218838;
+            }
+
+        #timeRangeLabel {
+            display: none;
+            padding: 10px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        /* Block B styles */
+        #blockB {
+            display: none;
+            margin-bottom: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: relative;
+        }
+
+        #excelExport {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+            background-color: #28a745;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+            #excelExport:hover {
+                background-color: #218838;
+            }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+
+        /* Block C styles */
+        #blockC {
+            display: none;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .charts-container {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .chart-wrapper {
+            flex: 1;
+            min-width: 400px;
+            position: relative;
+        }
+
+        .chart-title {
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        canvas {
+            max-width: 100%;
+            height: auto !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- Block A -->
+    <div id="blockA">
+        <div class="lot-container" id="lotContainer"></div>
+        <div class="button-container">
+            <button id="resetBtn">リセット</button>
+            <button id="calculateBtn">自動計算</button>
+        </div>
+        <div id="timeRangeLabel"></div>
+    </div>
+
+    <!-- Block B -->
+    <div id="blockB">
+        <div id="excelExport" title="Export to Excel">📊</div>
+        <table id="dataTable">
+            <thead>
+                <tr>
+                    <th>測定位置</th>
+                    <th>下限</th>
+                    <th>上限</th>
+                    <th>ｎ数</th>
+                    <th>平均値</th>
+                    <th>最小値</th>
+                    <th>最大値</th>
+                    <th>標準偏差</th>
+                    <th>Cp</th>
+                    <th>K</th>
+                    <th>CpK</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>全データ</td>
+                    <td>23.0</td>
+                    <td>22.0</td>
+                    <td>22</td>
+                    <td>120</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td>1</td>
+                    <td>23.0</td>
+                    <td>21.8</td>
+                    <td>22</td>
+                    <td>120</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td>2</td>
+                    <td>23.0</td>
+                    <td>21.8</td>
+                    <td>22</td>
+                    <td>120</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td>3</td>
+                    <td>23.0</td>
+                    <td>21.8</td>
+                    <td>22</td>
+                    <td>120</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Block C -->
+    <div id="blockC">
+        <div class="charts-container">
+            <div class="chart-wrapper">
+                <div class="chart-title">A面</div>
+                <canvas id="chartA"></canvas>
+            </div>
+            <div class="chart-wrapper">
+                <div class="chart-title">B面</div>
+                <canvas id="chartB"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Lot番号データ
+        const lotNumbers = [
+            '1402122501', '1402122502', '1402122503', '1402122504', '1402122505',
+            '1402122506', '1402122507', '1402122508', '1402122509', '1402122510',
+            '1402122511', '1402122512', '1402122513', '1402122514', '1402122515'
+        ];
+
+        // 時間データを計算
+        const lotTimes = [];
+        const baseDate = new Date('2025-01-15T08:30:00');
+
+        lotNumbers.forEach((lot, index) => {
+            const startTime = new Date(baseDate.getTime() + (index * 30 * 60 * 1000)); // 30分間隔（10分間隔 + 20分製造時間）
+            const endTime = new Date(startTime.getTime() + (20 * 60 * 1000)); // 20分製造時間
+            lotTimes.push({ lot, startTime, endTime });
+        });
+
+        // Lot boxesを生成
+        const lotContainer = document.getElementById('lotContainer');
+        lotNumbers.forEach((lot, index) => {
+            const box = document.createElement('div');
+            box.className = 'lot-box';
+            box.textContent = lot;
+            box.dataset.index = index;
+            if (index === 0) {
+                box.classList.add('selected');
+            }
+            lotContainer.appendChild(box);
+        });
+
+        // 選択状態を管理
+        let selectedIndices = [0];
+
+        // 時間範囲を更新
+        function updateTimeRange() {
+            const label = document.getElementById('timeRangeLabel');
+            if (selectedIndices.length === 0) {
+                label.style.display = 'none';
+                return;
+            }
+
+            const minIndex = Math.min(...selectedIndices);
+            const maxIndex = Math.max(...selectedIndices);
+            const startTime = lotTimes[minIndex].startTime;
+            const endTime = lotTimes[maxIndex].endTime;
+
+            const formatTime = (date) => {
+                const year = date.getFullYear();
+                const month = date.getMonth() + 1;
+                const day = date.getDate();
+                const hours = date.getHours();
+                const minutes = date.getMinutes();
+                return `${year}年${month}月${day}日 ${hours}:${minutes.toString().padStart(2, '0')}`;
+            };
+
+            label.textContent = `統計時間範囲：${formatTime(startTime)} ～ ${formatTime(endTime)}`;
+            label.style.display = 'block';
+        }
+
+        // 初期表示
+        updateTimeRange();
+
+        // Lot boxクリックイベント
+        lotContainer.addEventListener('click', (e) => {
+            if (e.target.classList.contains('lot-box')) {
+                const index = parseInt(e.target.dataset.index);
+
+                if (selectedIndices.length === 1 && selectedIndices[0] === index) {
+                    // 同じboxをクリック - 何もしない
+                    return;
+                }
+
+                if (selectedIndices.length === 1) {
+                    // 2つ目の選択
+                    const firstIndex = selectedIndices[0];
+                    const minIndex = Math.min(firstIndex, index);
+                    const maxIndex = Math.max(firstIndex, index);
+
+                    // 範囲内のすべてを選択
+                    selectedIndices = [];
+                    for (let i = minIndex; i <= maxIndex; i++) {
+                        selectedIndices.push(i);
+                    }
+                } else {
+                    // 新しい選択を開始
+                    selectedIndices = [index];
+                }
+
+                // UIを更新
+                document.querySelectorAll('.lot-box').forEach((box, i) => {
+                    if (selectedIndices.includes(i)) {
+                        box.classList.add('selected');
+                    } else {
+                        box.classList.remove('selected');
+                    }
+                });
+
+                updateTimeRange();
+            }
+        });
+
+        // リセットボタン
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            selectedIndices = [];
+            document.querySelectorAll('.lot-box').forEach(box => {
+                box.classList.remove('selected');
+            });
+            updateTimeRange();
+        });
+
+        // 自動計算ボタン
+        document.getElementById('calculateBtn').addEventListener('click', () => {
+            document.getElementById('blockB').style.display = 'block';
+            document.getElementById('blockC').style.display = 'block';
+            createCharts();
+        });
+
+        // Excel出力
+        document.getElementById('excelExport').addEventListener('click', () => {
+            const table = document.getElementById('dataTable');
+            const wb = XLSX.utils.table_to_book(table);
+            XLSX.writeFile(wb, '統計データ.xlsx');
+        });
+
+        // Chart.jsでグラフを作成
+        let chartA, chartB;
+
+        function createCharts() {
+            // Chart A
+            const ctxA = document.getElementById('chartA').getContext('2d');
+
+            if (chartA) {
+                chartA.destroy();
+            }
+
+            const labelsA = [
+                '90.0未満', '90.0～\n90.4未満', '90.4～\n90.8未満', '90.8～\n91.2未満',
+                '91.2～\n91.6未満', '91.6～\n92.0未満', '92.0～\n92.4未満', '92.4～\n92.8未満',
+                '92.8～\n93.2未満', '93.2～\n93.6未満', '93.6～\n94.0未満', '94.0以上'
+            ];
+
+            const dataA = [0, 1.5, 25, 80, 100, 50, 10, 2, 1, 1, 2, 1];
+
+            chartA = new Chart(ctxA, {
+                type: 'bar',
+                data: {
+                    labels: labelsA,
+                    datasets: [{
+                        label: '頻度',
+                        data: dataA,
+                        backgroundColor: '#007bff',
+                        borderColor: '#0056b3',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    aspectRatio: 2,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 200,
+                            ticks: {
+                                stepSize: 50
+                            },
+                            title: {
+                                display: true,
+                                text: '頻度'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: '全光線透過率【%】'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        annotation: {
+                            annotations: {
+                                line1: {
+                                    type: 'line',
+                                    xMin: 0.5,
+                                    xMax: 0.5,
+                                    borderColor: 'green',
+                                    borderWidth: 2
+                                },
+                                line2: {
+                                    type: 'line',
+                                    xMin: 6.5,
+                                    xMax: 6.5,
+                                    borderColor: 'green',
+                                    borderWidth: 2
+                                },
+                                line3: {
+                                    type: 'line',
+                                    xMin: 3.5,
+                                    xMax: 3.5,
+                                    borderColor: 'yellow',
+                                    borderWidth: 2
+                                },
+                                point1: {
+                                    type: 'point',
+                                    xValue: 2,
+                                    yValue: 60,
+                                    backgroundColor: 'red',
+                                    radius: 6,
+                                    pointStyle: 'cross'
+                                },
+                                point2: {
+                                    type: 'point',
+                                    xValue: 2,
+                                    yValue: 90,
+                                    backgroundColor: 'red',
+                                    radius: 6,
+                                    pointStyle: 'cross'
+                                },
+                                point3: {
+                                    type: 'point',
+                                    xValue: 2,
+                                    yValue: 120,
+                                    backgroundColor: 'red',
+                                    radius: 6,
+                                    pointStyle: 'cross'
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Chart B
+            const ctxB = document.getElementById('chartB').getContext('2d');
+
+            if (chartB) {
+                chartB.destroy();
+            }
+
+            const labelsB = [
+                '87.0未満', '87.0～\n87.4未満', '87.4～\n87.8未満', '87.8～\n88.2未満',
+                '88.2～\n88.6未満', '88.6～\n89.0未満', '89.0～\n89.4未満', '89.4～\n89.8未満',
+                '89.8～\n90.2未満', '90.2～\n90.6未満', '90.6～\n91.0未満', '91.0以上'
+            ];
+
+            const dataB = [0, 3.5, 23, 78, 102, 51, 10, 2, 1, 1, 2, 1];
+
+            chartB = new Chart(ctxB, {
+                type: 'bar',
+                data: {
+                    labels: labelsB,
+                    datasets: [{
+                        label: '頻度',
+                        data: dataB,
+                        backgroundColor: '#007bff',
+                        borderColor: '#0056b3',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    aspectRatio: 2,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 200,
+                            ticks: {
+                                stepSize: 50
+                            },
+                            title: {
+                                display: true,
+                                text: '頻度'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: '全光線透過率【%】'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        annotation: {
+                            annotations: {
+                                line1: {
+                                    type: 'line',
+                                    xMin: 0.5,
+                                    xMax: 0.5,
+                                    borderColor: 'green',
+                                    borderWidth: 2
+                                },
+                                line2: {
+                                    type: 'line',
+                                    xMin: 6.5,
+                                    xMax: 6.5,
+                                    borderColor: 'green',
+                                    borderWidth: 2
+                                },
+                                line3: {
+                                    type: 'line',
+                                    xMin: 3.5,
+                                    xMax: 3.5,
+                                    borderColor: 'yellow',
+                                    borderWidth: 2
+                                },
+                                point1: {
+                                    type: 'point',
+                                    xValue: 8,
+                                    yValue: 70,
+                                    backgroundColor: 'red',
+                                    radius: 6,
+                                    pointStyle: 'cross'
+                                },
+                                point2: {
+                                    type: 'point',
+                                    xValue: 8,
+                                    yValue: 100,
+                                    backgroundColor: 'red',
+                                    radius: 6,
+                                    pointStyle: 'cross'
+                                },
+                                point3: {
+                                    type: 'point',
+                                    xValue: 8,
+                                    yValue: 130,
+                                    backgroundColor: 'red',
+                                    radius: 6,
+                                    pointStyle: 'cross'
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
