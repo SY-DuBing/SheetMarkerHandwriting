@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>品質データ 全要素ダッシュボード（プロトタイプ）</title>
+<style>
+  /* --s : 解像度スケール（JS が 2K=1.0 を基準に自動算出。4K では約1.5） */
+  :root { --s: 1; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Meiryo", "Yu Gothic", "Hiragino Kaku Gothic ProN", "MS Gothic", sans-serif; background: #f0f2f5; }
+  header { position: fixed; top: 0; left: 0; right: 0; height: calc(52px * var(--s)); background: #1f3864; color: #fff;
+          display: flex; align-items: center; padding: 0 calc(16px * var(--s)); z-index: 100; box-shadow: 0 2px 6px rgba(0,0,0,.3); }
+  /* 検査対象の注文名：大きめ＋太字で強調 */
+  header h1 { font-size: calc(23px * var(--s)); font-weight: 800; letter-spacing: .02em; line-height: 1.15;
+              flex: 1; min-width: 0; padding-right: calc(20px * var(--s));
+              white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #settingsBtn { background: #2e75b6; color: #fff; border: 1px solid #9dc3e6; border-radius: 4px;
+                padding: calc(6px * var(--s)) calc(14px * var(--s)); font-size: calc(13px * var(--s)); cursor: pointer; }
+  #settingsBtn:hover { background: #3a87cc; }
+
+  /* ==== 並び順セレクタ（各カードのタイトルバー内・⛶の左） ==== */
+  .pick { width: calc(18px * var(--s)); height: calc(18px * var(--s)); flex: 0 0 auto;
+         margin-right: calc(4px * var(--s)); padding: 0;
+         border: 1.5px solid rgba(255,255,255,.92); border-radius: calc(3px * var(--s)); background: transparent;
+         color: #1f3864; font-size: calc(10.5px * var(--s)); font-weight: 800; line-height: 1;
+          font-family: inherit; cursor: pointer;
+          display: flex; align-items: center; justify-content: center;
+          transition: background .15s, transform .12s, box-shadow .15s, border-color .15s; }
+  .pick:hover { background: rgba(255,255,255,.30); transform: scale(1.14); }
+  /* 指定済み：アンバーで塗り、数字を濃紺で強調 */
+  .pick.on { background: #ffc53d; border-color: #ffffff; color: #1f3864;
+             box-shadow: 0 0 0 2px rgba(255,197,61,.30), 0 0 8px rgba(255,197,61,.45);
+             animation: pickPop .22s cubic-bezier(.2,1.5,.4,1); }
+  .pick.on:hover { background: #ffd25e; }
+  @keyframes pickPop { 0%{ transform: scale(.35); } 70%{ transform: scale(1.28); } 100%{ transform: scale(1); } }
+
+  /* ==== 並び替えトグル ==== */
+  #sortBtn { display: flex; align-items: center; gap: calc(6px * var(--s)); margin-right: calc(8px * var(--s));
+            background: #2e75b6; color: #fff; border: 1px solid #9dc3e6; border-radius: 4px;
+            padding: calc(6px * var(--s)) calc(12px * var(--s)); font-size: calc(13px * var(--s));
+            cursor: pointer; font-family: inherit;
+            transition: background .15s, border-color .15s; }
+  #sortBtn:hover { background: #3a87cc; }
+  #sortBtn .dot { width: calc(8px * var(--s)); height: calc(8px * var(--s)); border-radius: 50%; background: #8ea9c4;
+                 transition: background .15s, box-shadow .15s; }
+  #sortBtn.on { background: #c55a11; border-color: #f4b183; }
+  #sortBtn.on:hover { background: #d96a1f; }
+  #sortBtn.on .dot { background: #ffd58a; box-shadow: 0 0 7px #ffd58a; }
+
+
+  #settingsPanel { position: fixed; top: calc(58px * var(--s)); right: calc(12px * var(--s)); background: #fff;
+                  border: 1px solid #bbb; border-radius: 6px; padding: calc(14px * var(--s)) calc(16px * var(--s));
+                  z-index: 120; display: none; box-shadow: 0 4px 14px rgba(0,0,0,.25); }
+  #settingsPanel label { font-size: calc(13px * var(--s)); margin-right: calc(8px * var(--s)); }
+  #settingsPanel input { width: calc(56px * var(--s)); padding: calc(4px * var(--s)) calc(6px * var(--s)); font-size: calc(14px * var(--s)); }
+  #settingsPanel button { margin-left: calc(8px * var(--s)); padding: calc(4px * var(--s)) calc(14px * var(--s));
+                         font-size: calc(13px * var(--s)); cursor: pointer; }
+  #board { position: fixed; top: calc(52px * var(--s)); left: 0; right: 0; bottom: 0; overflow: auto;
+          padding: calc(14px * var(--s)); }
+  #grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: calc(14px * var(--s)); }
+  .card { background: #fff; border: 1px solid #d9d9d9; border-radius: 4px; overflow: hidden;
+          box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  .titlebar { background: #1f3864; color: #fff; height: calc(34px * var(--s)); display: flex; align-items: center;
+             padding: 0 calc(8px * var(--s)) 0 calc(12px * var(--s)); }
+  .titlebar .ttl { flex: 1; font-size: calc(13px * var(--s)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .zoomBtn { background: transparent; border: none; color: #fff; font-size: calc(15px * var(--s)); cursor: pointer;
+            width: calc(28px * var(--s)); height: calc(26px * var(--s)); border-radius: calc(3px * var(--s)); line-height: 1; }
+  .zoomBtn:hover { background: rgba(255,255,255,.22); }
+  .chartBody { width: 100%; }
+  .chartBody svg { display: block; width: 100%; height: auto; }
+  /* ==== 灯牌メッセージ（順番未指定の警告） ==== */
+  #toast { position: fixed; top: calc(66px * var(--s)); left: 50%; transform: translate(-50%, -14px);
+           background: #c55a11; color: #fff; border: 1px solid #f4b183; border-radius: 6px;
+           padding: calc(10px * var(--s)) calc(24px * var(--s)); font-size: calc(14px * var(--s));
+           font-weight: 700; letter-spacing: .05em; white-space: nowrap; z-index: 300;
+           box-shadow: 0 4px 18px rgba(0,0,0,.35), 0 0 0 3px rgba(255,166,77,.28);
+           opacity: 0; pointer-events: none;
+           transition: opacity .22s ease, transform .22s ease; }
+  #toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  /* lightbox */
+  #lightbox { position: fixed; inset: 0; background: rgba(0,0,0,.62); display: none;
+             align-items: center; justify-content: center; z-index: 200; }
+  #lbPanel { background: #fff; border-radius: 6px; width: min(calc(1150px * var(--s)), 94vw); max-height: 92vh;
+             display: flex; flex-direction: column; box-shadow: 0 10px 40px rgba(0,0,0,.5); }
+  #lbChart { overflow: auto; }
+  #lbChart svg { display: block; width: 100%; height: auto; }
+</style>
+</head>
+<body>
+<header>
+  <h1 title="2026-06-29_CARBONFEATHER CX722-01 12.5μm">2026-06-29_CARBONFEATHER CX722-01 12.5μm</h1>
+  <button id="sortBtn" title="指定した順に並べ替え / もう一度押すと解除して指定をクリア"><span class="dot"></span><span class="lbl">⇅ 並び替え</span></button>
+  <button id="settingsBtn">⚙ 設定</button>
+</header>
+
+<div id="toast" role="alert" aria-live="assertive"></div>
+
+<div id="settingsPanel">
+  <label for="colInput">表示列数（1～6）:</label>
+  <input type="number" id="colInput" min="1" max="6" value="3">
+  <button onclick="applyCols()">適用</button>
+</div>
+
+<div id="board">
+  <div id="grid"></div>
+</div>
+
+<div id="lightbox">
+  <div id="lbPanel">
+    <div class="titlebar">
+      <span class="ttl" id="lbTitle"></span>
+      <button class="zoomBtn" style="font-size:16px" onclick="closeLightbox()" title="閉じる">✕</button>
+    </div>
+    <div id="lbChart"></div>
+  </div>
+</div>
+
+<script>
+/* ================= データ定義（画像から抽出） ================= */
+const CHARTS = [
+ { title:"1.総厚 [μm]", facet:"大分類平均値", legend:true,
+   data:[22.6708,22.5417,22.4250,22.4208,22.2667,22.3167,22.1708,22.5250,22.2500,22.3500,22.3167],
+   limits:[{v:24,label:"大分類平均値上限値"},{v:20,label:"大分類平均値下限値"}] },
+ { title:"2.光沢 (GLOSS)_60° [%]-A", facet:"A面", legend:true,
+   data:[0.6100,0.6000,0.6000,0.6500,0.6000,0.6000,0.6000,0.6000,0.6000,0.6000,0.6100],
+   limits:[{v:0.9,label:"規格上限値"},{v:0.3,label:"規格下限値"}] },
+ { title:"2.光沢 (GLOSS)_60° [%]-B", facet:"B面", legend:true,
+   data:[1.0600,0.9700,1.0200,1.0500,1.0200,1.0500,1.0600,1.0800,1.0700,1.0600,1.0900],
+   limits:[{v:1.2,label:"規格上限値"},{v:0.6,label:"規格下限値"}] },
+ { title:"3.光沢 (GLOSS) 差異_60° [-]", facet:"", legend:true,
+   data:[1.7429,1.6167,1.7000,1.6238,1.7000,1.7500,1.7667,1.8000,1.7833,1.7667,1.7905],
+   limits:[{v:2,label:"規格上限値"},{v:1,label:"規格下限値"}] },
+ { title:"4.光学濃度 [-]", facet:"光学濃度 [-]", legend:true,
+   data:[7.0467,6.8600,6.9167,7.0933,7.0333,7.4333,7.4667,7.1800,7.1467,7.6467,7.3533],
+   limits:[{v:5,label:"規格下限値"}] },
+ { title:"5.表面粗さ (Ra) [μm]-A", facet:"A面", legend:true,
+   data:[0.4133,0.4240,0.4089,0.4026,0.4415,0.4198,0.4184,0.4260,0.4156,0.4064,0.4223],
+   limits:[{v:0.65,label:"規格上限値"},{v:0.15,label:"規格下限値"}] },
+ { title:"5.表面粗さ (Ra) [μm]-B", facet:"B面", legend:true,
+   data:[0.3376,0.3444,0.3413,0.3636,0.3366,0.3421,0.3331,0.3487,0.3337,0.3343,0.3419],
+   limits:[{v:0.7,label:"規格上限値"},{v:0.2,label:"規格下限値"}] },
+ { title:"7.L＊値_反射 [-]-A", facet:"A面", legend:true,
+   data:[17.3800,17.2267,17.5367,17.4767,17.4433,17.4600,17.4767,17.4267,17.3200,17.3667,17.3833],
+   limits:[{v:18.5,label:"規格上限値"},{v:16.5,label:"規格下限値"}] },
+ { title:"7.L＊値_反射 [-]-B", facet:"B面", legend:true,
+   data:[24.1133,23.4657,23.9133,24.0767,23.9033,24.0000,24.0333,23.8367,23.7467,23.7600,23.8133],
+   limits:[{v:24.3,label:"規格上限値"},{v:22.3,label:"規格下限値"}] },
+ { title:"8.a＊値_反射 [-]-A", facet:"A面", legend:true,
+   data:[0.3633,0.3300,0.3267,0.2433,0.3067,0.3100,0.2433,0.2333,0.2800,0.3600,0.2933],
+   limits:[] },
+ { title:"8.a＊値_反射 [-]-B", facet:"B面", legend:true,
+   data:[0.0767,0.0633,0.1200,0.0067,0.0167,0.0400,0.0467,0.0033,0.0333,0.0367,0.0967],
+   limits:[] },
+ { title:"9.b＊値_反射 [-]-A", facet:"A面", legend:true,
+   data:[1.1067,1.1000,1.1633,1.1367,1.1333,1.0033,0.9950,0.9767,1.1767,1.0233,1.0533],
+   limits:[] },
+ { title:"9.b＊値_反射 [-]-B", facet:"B面", legend:true,
+   data:[-0.0367,0.0800,-0.0767,-0.0267,-0.0433,-0.1200,-0.1700,-0.2100,-0.1733,-0.1133,-0.1433],
+   limits:[] },
+ { title:"10.ΔL＊値 [-]-A", facet:"A面", legend:false, data:[], limits:[{v:1.2,label:"規格上限値"}] },
+ { title:"10.ΔL＊値 [-]-B", facet:"B面", legend:true,  data:[], limits:[{v:1.2,label:"規格上限値"}] },
+ { title:"12.付き量測定_条件出し用-A面", facet:"A面 ㎡換算", legend:true, data:[4.4071], limits:[] },
+ { title:"13.付き量測定_条件出し用-B面", facet:"B面 ㎡換算", legend:true, data:[3.7086], limits:[] },
+ { title:"14.付音量比率 [%] _条件出し用", facet:"", legend:true, data:[54.3070],
+   limits:[{v:56,label:"規格上限値"},{v:53,label:"規格下限値"}] },
+ { title:"15.付き量測定", facet:"A面 ㎡換算", legend:true,
+   data:[4.4933,4.5300,4.5267,4.4033,4.3733,4.3400,4.3633,4.3800,4.4067,4.3600], limits:[] },
+ { title:"16.付音量比率 [%]", facet:"付き量比率 [%]", legend:true,
+   data:[54.5932,54.4712,54.3096,55.1662,54.4304,53.8536,54.2562,53.8853,53.8074,54.0763],
+   limits:[{v:57,label:"規格上限値"},{v:53,label:"目標値"},{v:51,label:"規格下限値"}] },
+];
+
+/* ================= SVG チャート描画 ================= */
+const VW = 660, VH = 300;
+const L = 52, R = 158, T = 34, B = 34;
+const PLOT_W = VW - L - R, PLOT_H = VH - T - B;
+const TEAL = "#5cc8bf", RED = "#d9534f", GRAY = "#666";
+
+function fmtTick(v){
+  const r = Math.round(v * 1e6) / 1e6;
+  return Number.isInteger(r) ? String(r) : String(parseFloat(r.toFixed(4)));
+}
+function niceTicks(min, max, count){
+  if (min === max){ min -= 1; max += 1; }
+  const raw = (max - min) / (count - 1);
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  let step = mag * 10;
+  for (const m of [1, 2, 2.5, 5, 10]){ if (mag * m >= raw){ step = mag * m; break; } }
+  const lo = Math.floor(min / step) * step, hi = Math.ceil(max / step) * step;
+  const ticks = [];
+  for (let v = lo; v <= hi + 1e-9; v += step) ticks.push(Math.round(v * 1e6) / 1e6);
+  return ticks;
+}
+
+function renderChart(cfg){
+  const data = cfg.data, n = data.length;
+  let vals = data.slice();
+  cfg.limits.forEach(l => vals.push(l.v));
+  if (!vals.length){ vals = [0, 1]; }
+  let dMin = Math.min(...vals), dMax = Math.max(...vals);
+  const pad = (dMax - dMin) * 0.12 || 1;
+  const ticks = niceTicks(dMin - pad, dMax + pad, 7);
+  const yMin = ticks[0], yMax = ticks[ticks.length - 1];
+  const y = v => T + (1 - (v - yMin) / (yMax - yMin)) * PLOT_H;
+  const x = i => L + (i + 0.5) * PLOT_W / Math.max(n, 1);
+
+  let s = '<svg viewBox="0 0 ' + VW + ' ' + VH + '" xmlns="http://www.w3.org/2000/svg" font-family="Meiryo, Yu Gothic, sans-serif">';
+
+  /* 左上：ドロップダウン（ファセット選択） */
+  s += '<rect x="' + L + '" y="6" width="150" height="24" fill="#fff" stroke="#d0d0d0" rx="2"/>';
+  s += '<text x="' + (L + 8) + '" y="22" font-size="12" fill="#333">' + (cfg.facet || "") + '</text>';
+  s += '<text x="' + (L + 150 - 16) + '" y="22" font-size="11" fill="#888">▾</text>';
+
+  /* 右上：過去データ + ページング */
+  s += '<text x="' + (VW - 64) + '" y="23" font-size="15" font-weight="bold" fill="#333" text-anchor="end">過去データ</text>';
+  s += '<circle cx="' + (VW - 50) + '" cy="17" r="11" fill="#f4f4f4" stroke="#ddd"/>';
+  s += '<text x="' + (VW - 50) + '" y="21" font-size="12" fill="#888" text-anchor="middle">‹</text>';
+  s += '<circle cx="' + (VW - 24) + '" cy="17" r="11" fill="#f4f4f4" stroke="#ddd"/>';
+  s += '<text x="' + (VW - 24) + '" y="21" font-size="12" fill="#888" text-anchor="middle">›</text>';
+
+  /* グリッド線・Y軸ラベル */
+  ticks.forEach(t => {
+    const yy = y(t);
+    s += '<line x1="' + L + '" y1="' + yy + '" x2="' + (L + PLOT_W) + '" y2="' + yy + '" stroke="#e3e3e3" stroke-dasharray="4 3"/>';
+    s += '<text x="' + (L - 8) + '" y="' + (yy + 4) + '" font-size="11" fill="' + GRAY + '" text-anchor="end">' + fmtTick(t) + '</text>';
+  });
+
+  /* X軸ラベル */
+  const xn = n || 1;
+  for (let i = 0; i < xn; i++){
+    const xx = x(i);
+    s += '<line x1="' + xx + '" y1="' + T + '" x2="' + xx + '" y2="' + (T + PLOT_H) + '" stroke="#efefef"/>';
+    s += '<text x="' + xx + '" y="' + (T + PLOT_H + 18) + '" font-size="11" fill="' + GRAY + '" text-anchor="middle">' + (i + 1) + '</text>';
+  }
+
+  /* 規格線 */
+  cfg.limits.forEach(lim => {
+    const yy = Math.max(T, Math.min(T + PLOT_H, y(lim.v)));
+    s += '<line x1="' + L + '" y1="' + yy + '" x2="' + (L + PLOT_W) + '" y2="' + yy + '" stroke="' + RED + '" stroke-width="1.4"/>';
+    s += '<text x="' + (L + PLOT_W + 6) + '" y="' + (yy + 4) + '" font-size="11" fill="' + RED + '">' + lim.label + ":" + fmtTick(lim.v) + '</text>';
+  });
+
+  /* データ折れ線・点・値ラベル */
+  if (n > 0){
+    const pts = data.map((v, i) => [x(i), y(v)]);
+    if (n > 1){
+      s += '<polyline points="' + pts.map(p => p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ") +
+           '" fill="none" stroke="' + TEAL + '" stroke-width="2.2"/>';
+    }
+    pts.forEach((p, i) => {
+      const last = (i === n - 1);
+      const vx = Math.max(L + 16, Math.min(L + PLOT_W - 16, p[0]));
+      s += '<text x="' + vx + '" y="' + (p[1] - 10) + '" font-size="10.5" fill="#555" text-anchor="middle">' + data[i].toFixed(4) + '</text>';
+      s += '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="4.5" fill="#fff" stroke="' + (last ? RED : TEAL) + '" stroke-width="2"/>';
+    });
+  }
+
+  /* 凡例 */
+  if (cfg.legend){
+    s += '<rect x="' + L + '" y="' + (VH - 16) + '" width="10" height="10" fill="' + TEAL + '"/>';
+    s += '<text x="' + (L + 16) + '" y="' + (VH - 7) + '" font-size="11" fill="' + GRAY + '">製造中データ</text>';
+  }
+  s += '</svg>';
+  return s;
+}
+
+/* ================= 手動並び順 ================= */
+const origOrder = CHARTS.map((_, i) => i);  // 初期ロード順
+let picked = [];                            // クリックされた順（CHARTS の index）
+let sorted = false;                         // 並び替えトグル ON/OFF
+
+/* 実際に表示する順序。sorted=false なら必ず初期順に戻る */
+function displayOrder(){
+  if (!sorted || picked.length === 0) return origOrder.slice();
+  const rest = origOrder.filter(i => picked.indexOf(i) < 0);
+  return picked.concat(rest);              // 指定分を先頭に、残りは元の順で後ろへ
+}
+
+/* 各カードのタイトルバー内セレクタ（⛶の左）の表示を同期する */
+function refreshPicks(){
+  document.querySelectorAll('#grid .pick').forEach(btn => {
+    const idx = +btn.dataset.idx;
+    const p = picked.indexOf(idx);
+    btn.textContent = p >= 0 ? String(p + 1) : '';          // 未指定は空の白枠
+    btn.classList.toggle('on', p >= 0);
+    btn.title = (p >= 0 ? '第 ' + (p + 1) + ' 番：' : '並び順を指定：') + CHARTS[idx].title;
+  });
+}
+
+/* クリック＝順番の確定 / 再クリック＝解除（残りは詰め直す） */
+function togglePick(idx){
+  const p = picked.indexOf(idx);
+  if (p >= 0) picked.splice(p, 1);
+  else picked.push(idx);
+  if (sorted) buildGrid();   // 適用中は即座に並び替え
+  else refreshPicks();       // 未適用なら数字とハイライトだけ更新
+}
+
+function updateSortBtn(){
+  const b = document.getElementById('sortBtn');
+  b.classList.toggle('on', sorted);
+  b.querySelector('.lbl').textContent = sorted ? '⇅ 並び替え中' : '⇅ 並び替え';
+}
+/* 灯牌メッセージ（一定時間で自動的に消える） */
+let toastTimer = null;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.remove('show');
+  void t.offsetWidth;                       // 連続クリックでもアニメーションを再生し直す
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+document.getElementById('sortBtn').addEventListener('click', () => {
+  /* 未指定（picked が空）では並び替えを開始しない：メッセージのみ表示して状態は変えない */
+  if (!sorted && picked.length === 0){
+    showToast('順番をご指定ください');
+    return;
+  }
+  sorted = !sorted;
+  if (!sorted) picked = [];    // 解除時は指定した順番をすべてクリアし、初期順に戻す
+  updateSortBtn();
+  buildGrid();                 // 列数(cols)はそのまま維持される
+});
+
+/* ================= 解像度（2K/4K）自動スケーリング ================= */
+const BASE_VW = 2560;    // 2K 幅を基準（この画面の比率を 1.0 として維持）
+const MAX_SCALE = 1.8;   // 4K 以上の上限
+
+function uiScale(){
+  const w = document.documentElement.clientWidth || window.innerWidth;
+  /* 2K(2560) 以下 → 1.0（現状の比率をそのまま維持）
+     4K(3840)  → 1.5（タイトルバー・文字・余白をカード幅の拡大率に合わせる） */
+  return Math.min(MAX_SCALE, Math.max(1, w / BASE_VW));
+}
+function applyScale(){
+  document.documentElement.style.setProperty('--s', uiScale().toFixed(3));
+}
+let scaleTimer = null;
+window.addEventListener('resize', () => {       // Windows の表示スケール変更・ウィンドウズームにも追随
+  clearTimeout(scaleTimer);
+  scaleTimer = setTimeout(applyScale, 120);
+});
+
+/* ================= グリッド構築 ================= */
+let cols = 3;
+function buildGrid(){
+  const grid = document.getElementById('grid');
+  grid.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';   // 列数は常に維持
+  grid.innerHTML = '';
+  displayOrder().forEach(idx => {
+    const cfg = CHARTS[idx];
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.idx = idx;
+    card.innerHTML =
+      '<div class="titlebar"><span class="ttl" title="' + cfg.title + '">' + cfg.title + '</span>' +
+      '<button type="button" class="pick" data-idx="' + idx + '" title="並び順を指定"></button>' +
+      '<button class="zoomBtn" data-idx="' + idx + '" title="拡大表示">⛶</button></div>' +
+      '<div class="chartBody">' + renderChart(cfg) + '</div>';
+    grid.appendChild(card);
+  });
+  grid.querySelectorAll('.zoomBtn').forEach(b =>
+    b.addEventListener('click', () => openLightbox(+b.dataset.idx)));
+  grid.querySelectorAll('.pick').forEach(b =>
+    b.addEventListener('click', () => togglePick(+b.dataset.idx)));
+  refreshPicks();
+}
+function applyCols(){
+  const v = parseInt(document.getElementById('colInput').value, 10);
+  cols = Math.min(6, Math.max(1, isNaN(v) ? 3 : v));
+  document.getElementById('colInput').value = cols;
+  buildGrid();
+  document.getElementById('settingsPanel').style.display = 'none';
+}
+
+/* ================= ライトボックス ================= */
+function openLightbox(idx){
+  const cfg = CHARTS[idx];
+  document.getElementById('lbTitle').textContent = cfg.title;
+  document.getElementById('lbChart').innerHTML = renderChart(cfg);
+  document.getElementById('lightbox').style.display = 'flex';
+}
+function closeLightbox(){ document.getElementById('lightbox').style.display = 'none'; }
+document.getElementById('lightbox').addEventListener('click', e => { if (e.target.id === 'lightbox') closeLightbox(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+
+/* ================= 設定パネル ================= */
+document.getElementById('settingsBtn').addEventListener('click', () => {
+  const p = document.getElementById('settingsPanel');
+  p.style.display = p.style.display === 'block' ? 'none' : 'block';
+});
+
+/* ================= マウス中ボタンで上下スクロール ================= */
+const board = document.getElementById('board');
+let mDown = false, mY = 0, mTop = 0;
+board.addEventListener('mousedown', e => {
+  if (e.button === 1){ e.preventDefault(); mDown = true; mY = e.clientY; mTop = board.scrollTop; document.body.style.cursor = 'grabbing'; }
+});
+document.addEventListener('mousemove', e => {
+  if (mDown){ board.scrollTop = mTop - (e.clientY - mY); }
+});
+document.addEventListener('mouseup', e => { if (e.button === 1){ mDown = false; document.body.style.cursor = ''; } });
+board.addEventListener('auxclick', e => { if (e.button === 1) e.preventDefault(); });
+
+applyScale();   // 初回描画前に解像度スケールを決定
+updateSortBtn();
+buildGrid();
+</script>
+</body>
+</html>
